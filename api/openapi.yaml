@@ -1,0 +1,206 @@
+openapi: 3.0.3
+info:
+  title: Books REST API
+  description: The REST API specification for books
+  version: 1.0.0
+servers:
+  - url: 'http://127.0.0.1:4000/v1'
+    description: Development server
+tags:
+  - name: Auth
+    description: User registration and login operations
+  - name: Books
+    description: Operations related to books
+paths:
+  /auth/registration:
+    post:
+      summary: Register a new user
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationRequest"
+      responses:
+        201:
+          description: User registered successfully
+          headers:
+            Location:
+              description: The URI of the newly created user
+              schema:
+                type: string
+                format: uri
+                example: /users/40e6215d-b5c6-4896-987c-f30f3678f608
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationResponse"
+        400:
+          description: Invalid input provided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        409:
+          description: User with this email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        422:
+          description: Failed validation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Enter the access token in the format 'Bearer <token>'
+  schemas:
+    RegistrationRequest:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+        - password
+      properties:
+        first_name:
+          type: string
+          description: The first name of the user
+          example: John
+        last_name:
+          type: string
+          description: The last name of the user
+          example: Doe
+        email:
+          type: string
+          description: The email address of the user
+          example: johndoe@example.com
+          format: email
+        password:
+          type: string
+          format: password
+          description: The password of the user
+    RegistrationResponse:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+        - email
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier for the user
+          example: 40e6215d-b5c6-4896-987c-f30f3678f608
+        first_name:
+          type: string
+          description: The first name of the user
+          example: John
+        last_name:
+          type: string
+          description: The last name of the user
+          example: Doe
+        email:
+          type: string
+          format: email
+          description: The email of the user
+          example: johndoe@example.com
+        created_at:
+          type: string
+          format: date-time
+          description: The timestamp when the user was created
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: The email address of the user
+          example: johndoe@example.com
+        password:
+          type: string
+          format: password
+          description: The password of the user
+
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - refresh_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+          description: The access token used for accessing protected resources
+        refresh_token:
+          type: string
+          description: The refresh token used to obtain new access token
+        token_type:
+          type: string
+          description: The type of token issued
+          example: Bearer
+        expires_in:
+          type: integer
+          description: The lifetime in seconds of the access token
+          example: 3600
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: A human-readable error message
+          example: Invalid input provided
+
+    ValidationError:
+      type: object
+      required:
+        - message
+        - errors
+      properties:
+        message:
+          type: string
+          description: A human-readable summary of the overall error
+          example: Invalid data provided for registration
+        errors:
+          type: array
+          description: A list of specific field validation errors
+          items:
+            $ref: '#/components/schemas/FieldError'
+
+    FieldError:
+      type: object
+      required:
+        - message
+        - field
+      properties:
+        message:
+          type: string
+          description: The specific error message for the field
+          example: must be provided
+        field:
+          type: string
+          description: The name of the field that caused the validation error
+          example: last_name
