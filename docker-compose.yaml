@@ -1,0 +1,19 @@
+services:
+  books-db:
+    container_name: books-db
+    image: postgres:17.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - books_db_data:/var/lib/postgresql/data
+    networks:
+      - books-net
+
+volumes:
+  books_db_data:
+networks:
+  books-net:
