@@ -14,17 +14,17 @@ migrate-create:
 .PHONY: migrate-up
 migrate-up:
 	@echo "Running up migrations"
-	@migrate -path ${MIGRATIONS_PATH} -database ${FUMODE_DB_DSN} up
+	@migrate -path ${MIGRATIONS_PATH} -database ${DATABASE_DSN} up
 
 .PHONY: migrate-down
 migrate-down:
 	@echo "Running down migrations"
-	@migrate -path ${MIGRATIONS_PATH} -database ${FUMODE_DB_DSN} down
+	@migrate -path ${MIGRATIONS_PATH} -database ${DATABASE_DSN} down
 
 .PHONY: migrate-drop
 migrate-drop:
 	@echo "Dropping all tables"
-	@migrate -path ${MIGRATIONS_PATH} -database ${FUMODE_DB_DSN} drop
+	@migrate -path ${MIGRATIONS_PATH} -database ${DATABASE_DSN} drop
 
 .PHONY: compose-up
 compose-up:
