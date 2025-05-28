@@ -8,9 +8,11 @@ servers:
     description: Development server
 tags:
   - name: Auth
-    description: User registration and login operations
+    description: User registration, login and token management
   - name: Books
     description: Operations related to books
+  - name: UserManagement
+    description: Operations related to user profiles
 paths:
   /auth/registration:
     post:
@@ -36,7 +38,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RegistrationResponse"
+                $ref: "#/components/schemas/UserResponse"
         400:
           description: Invalid input provided
           content:
@@ -61,6 +63,104 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /auth/verify-email:
+    post:
+      summary: Verify user email address
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyEmailRequest"
+      responses:
+        200:
+          description: Email successfully verified. Account is now active
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Email verified successfully. Your account is now active."
+        400:
+          description: Invalid request (e.g malformed input)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        422:
+          description: Failed validation (e.g code not 6-digits)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        404:
+          description: User with the provided email not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "User with email johndoe@example.com not found"
+        409:
+          description: Email already verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Email address already verified"
+  /auth/resend-code:
+    post:
+      summary: Resend email verification code
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResendCodeRequest"
+      responses:
+        200:
+          description: Verification code successfully resent
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                properties:
+                  message:
+                    type: string
+                    example: "A new verification code has been sent to your email"
+        400:
+          description: Invalid input provided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        404:
+          description: User with provided email not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "User with email johndoe@example.com not found"
+        409:
+          description: Email already verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Email address already verified"
+
   /auth/login:
     post:
       summary: Log in a user
@@ -105,6 +205,82 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /token/refresh:
+    post:
+      summary: Refresh access token
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRefreshRequest"
+      responses:
+        200:
+          description: New access token (and optionally refresh token) issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        400:
+          description: Invalid request (e.g Missing refresh token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Invalid request: refresh_token is required"
+        401:
+          description: Unauthorized (e.g Refresh token is expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Refresh token is invalid or expired"
+  /users/{id}:
+    get:
+      summary: Get user profile by ID
+      tags:
+        - UserManagement
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: The unique ID of the user to retrieve
+          example: 40e6215d-b5c6-4896-987c-f30f3678f608
+      security:
+        - BearerAuth: [ ]
+      responses:
+        200:
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        401:
+          description: Unauthorized (e.g No token provided or token is invalid/expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Access token missing or invalid"
+        404:
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "User with ID 40e6215d-b5c6-4896-987c-f30f3678f608 not found"
+
+
 components:
   securitySchemes:
     BearerAuth:
@@ -137,7 +313,7 @@ components:
           type: string
           format: password
           description: The password of the user
-    RegistrationResponse:
+    UserResponse:
       type: object
       required:
         - id
@@ -183,7 +359,6 @@ components:
           type: string
           format: password
           description: The password of the user
-
     TokenResponse:
       type: object
       required:
@@ -206,7 +381,6 @@ components:
           type: integer
           description: The lifetime in seconds of the access token
           example: 3600
-
     Error:
       type: object
       required:
@@ -216,7 +390,6 @@ components:
           type: string
           description: A human-readable error message
           example: Invalid input provided
-
     ValidationError:
       type: object
       required:
@@ -232,7 +405,6 @@ components:
           description: A list of specific field validation errors
           items:
             $ref: '#/components/schemas/FieldError'
-
     FieldError:
       type: object
       required:
@@ -247,3 +419,37 @@ components:
           type: string
           description: The name of the field that caused the validation error
           example: last_name
+    TokenRefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: The refresh token obtained during initial login or previous refresh
+    VerifyEmailRequest:
+      type: object
+      required:
+        - email
+        - verification_code
+      properties:
+        email:
+          type: string
+          format: email
+          description: The email address to be verified
+          example: johndoe@example.com
+        verification_code:
+          type: string
+          description: The 6-digit verification code received by the email
+          pattern: '^\d{6}$'
+          example: "129065"
+    ResendCodeRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          description: The email address to which the new verification code should be sent
+          example: johndoe@example.com
