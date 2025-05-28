@@ -105,6 +105,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /token/refresh:
+    post:
+      summary: Refresh access token
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRefreshRequest"
+      responses:
+        200:
+          description: New access token (and optionally refresh token) issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        400:
+          description: Invalid request (e.g Missing refresh token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Invalid request: refresh_token is required"
+        401:
+          description: Unauthorized (e.g Refresh token is expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Refresh token is invalid or expired"
 components:
   securitySchemes:
     BearerAuth:
@@ -247,3 +282,12 @@ components:
           type: string
           description: The name of the field that caused the validation error
           example: last_name
+
+    TokenRefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: The refresh token obtained during initial login or previous refresh
