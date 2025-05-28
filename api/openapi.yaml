@@ -11,6 +11,8 @@ tags:
     description: User registration and login operations
   - name: Books
     description: Operations related to books
+  - name: UserManagement
+    description: Operations related to user profiles
 paths:
   /auth/registration:
     post:
@@ -36,7 +38,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RegistrationResponse"
+                $ref: "#/components/schemas/UserResponse"
         400:
           description: Invalid input provided
           content:
@@ -140,6 +142,47 @@ paths:
                 $ref: "#/components/schemas/Error"
               example:
                 message: "Unauthorized: Refresh token is invalid or expired"
+  /users/{id}:
+    get:
+      summary: Get user profile by ID
+      tags:
+        - UserManagement
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: The unique ID of the user to retrieve
+          example: 40e6215d-b5c6-4896-987c-f30f3678f608
+      security:
+        - BearerAuth: [ ]
+      responses:
+        200:
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        401:
+          description: Unauthorized (e.g No token provided or token is invalid/expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Access token missing or invalid"
+        404:
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "User with ID 40e6215d-b5c6-4896-987c-f30f3678f608 not found"
+
+
 components:
   securitySchemes:
     BearerAuth:
@@ -172,7 +215,7 @@ components:
           type: string
           format: password
           description: The password of the user
-    RegistrationResponse:
+    UserResponse:
       type: object
       required:
         - id
