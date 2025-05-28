@@ -114,6 +114,52 @@ paths:
                 $ref: "#/components/schemas/Error"
               example:
                 message: "Email address already verified"
+  /auth/resend-code:
+    post:
+      summary: Resend email verification code
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResendCodeRequest"
+      responses:
+        200:
+          description: Verification code successfully resent
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                properties:
+                  message:
+                    type: string
+                    example: "A new verification code has been sent to your email"
+        400:
+          description: Invalid input provided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        404:
+          description: User with provided email not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "User with email johndoe@example.com not found"
+        409:
+          description: Email already verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Email address already verified"
 
   /auth/login:
     post:
@@ -397,3 +443,13 @@ components:
           description: The 6-digit verification code received by the email
           pattern: '^\d{6}$'
           example: "129065"
+    ResendCodeRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          description: The email address to which the new verification code should be sent
+          example: johndoe@example.com
