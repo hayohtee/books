@@ -410,7 +410,7 @@ paths:
               example:
                 message: "Forbidden: you have no permission to access this resource"
     put:
-      summary: Update a specific book that belongs to the user by id
+      summary: Update a specific book that belongs to the user by ID
       tags:
         - Books
       security:
@@ -480,6 +480,50 @@ paths:
                 errors:
                   message: "must be provided"
                   field: "name"
+    delete:
+      summary: Delete a specific book that belongs to the user by ID
+      tags:
+        - Books
+      security:
+        - BearerAuth: [ ]
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+            description: The unique identifier for the book
+            example: 50e6215d-b5c6-4896-987c-f30f3678f608
+      responses:
+        200:
+          description: Book deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                properties:
+                  message:
+                    type: string
+                    example: Book deleted successfully
+        401:
+          description: Unauthorized (e.g No token provided or token is invalid/expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Access token missing or invalid"
+        403:
+          description: Forbidden (e.g No permission to access the resource)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Forbidden: you have no permission to access this resource"
 components:
   securitySchemes:
     BearerAuth:
