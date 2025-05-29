@@ -279,8 +279,251 @@ paths:
                 $ref: "#/components/schemas/Error"
               example:
                 message: "User with ID 40e6215d-b5c6-4896-987c-f30f3678f608 not found"
-
-
+  /books:
+    post:
+      summary: Create a new book
+      tags:
+        - Books
+      security:
+        - BearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookRequest"
+      responses:
+        201:
+          description: Book created successfully
+          headers:
+            Location:
+              description: The URI of the newly created book
+              schema:
+                type: string
+                format: uri
+                example: /books/50e6215d-b5c6-4896-987c-f30f3678f608
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
+        400:
+          description: Invalid request (e.g Malformed JSON body)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Invalid request: malformed json body"
+        401:
+          description: Unauthorized (e.g No token provided or token is invalid/expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Access token missing or invalid"
+        422:
+          description: Failed validation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+    get:
+      summary: Retrieve all books that belongs to the user
+      tags:
+        - Books
+      security:
+        - BearerAuth: [ ]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            description: The page number to retrieve from
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            description: The maximum number of items to retrieve per page
+      responses:
+        200:
+          description: Successfully retrieved all books that belongs to the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListBookResponse"
+        401:
+          description: Unauthorized (e.g No token provided or token is invalid/expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Access token missing or invalid"
+  /books/{id}:
+    get:
+      summary: Get a specific book that belongs to the user by ID
+      tags:
+        - Books
+      security:
+        - BearerAuth: [ ]
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+            description: The unique identifier for the book
+            example: 50e6215d-b5c6-4896-987c-f30f3678f608
+      responses:
+        200:
+          description: Book successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
+        401:
+          description: Unauthorized (e.g No token provided or token is invalid/expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Access token missing or invalid"
+        404:
+          description: Book not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Book with ID 50e6215d-b5c6-4896-987c-f30f3678f608 not found"
+        403:
+          description: Forbidden (e.g No permission to access the resource)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Forbidden: you have no permission to access this resource"
+    put:
+      summary: Update a specific book that belongs to the user by ID
+      tags:
+        - Books
+      security:
+        - BearerAuth: [ ]
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+            description: The unique identifier for the book
+            example: 50e6215d-b5c6-4896-987c-f30f3678f608
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBookRequest"
+      responses:
+        200:
+          description: Book updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
+        400:
+          description: Invalid request (e.g Malformed JSON body)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Invalid request: malformed json body"
+        401:
+          description: Unauthorized (e.g No token provided or token is invalid/expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Access token missing or invalid"
+        404:
+          description: Book not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Book with ID 50e6215d-b5c6-4896-987c-f30f3678f608 not found"
+        403:
+          description: Forbidden (e.g No permission to access the resource)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Forbidden: you have no permission to access this resource"
+        422:
+          description: Failed validation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+              example:
+                message: "Invalid input provided"
+                errors:
+                  message: "must be provided"
+                  field: "name"
+    delete:
+      summary: Delete a specific book that belongs to the user by ID
+      tags:
+        - Books
+      security:
+        - BearerAuth: [ ]
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+            description: The unique identifier for the book
+            example: 50e6215d-b5c6-4896-987c-f30f3678f608
+      responses:
+        200:
+          description: Book deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                properties:
+                  message:
+                    type: string
+                    example: Book deleted successfully
+        401:
+          description: Unauthorized (e.g No token provided or token is invalid/expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Access token missing or invalid"
+        403:
+          description: Forbidden (e.g No permission to access the resource)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Forbidden: you have no permission to access this resource"
 components:
   securitySchemes:
     BearerAuth:
@@ -453,3 +696,90 @@ components:
           format: email
           description: The email address to which the new verification code should be sent
           example: johndoe@example.com
+    CreateBookRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The name of the book
+          example: REST api design
+    UpdateBookRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The name of the book
+          example: REST api design
+    BookResponse:
+      type: object
+      required:
+        - id
+        - name
+        - user_id
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique identifier for the book
+          example: 50e6215d-b5c6-4896-987c-f30f3678f608
+        name:
+          type: string
+          description: The name of the book
+          example: REST api design
+        user_id:
+          type: string
+          format: uuid
+          description: The unique identifier for the book owner
+          example: 50e6215d-b5c6-4896-987c-f30f3678f608
+        created_at:
+          type: string
+          format: date-time
+          description: The timestamp when the book was created
+        updated_at:
+          type: string
+          format: date-time
+          description: The timestamp when the book was updated
+    Pagination:
+      type: object
+      required:
+        - current_page
+        - total_pages
+        - total_items
+        - page_size
+      properties:
+        current_page:
+          type: integer
+          minimum: 1
+          description: The current page number
+          example: 1
+        total_pages:
+          type: integer
+          description: The total number of pages
+          minimum: 1
+          example: 10
+        page_size:
+          type: integer
+          description: The number of items per page
+          minimum: 1
+          example: 10
+        total_items:
+          type: integer
+          description: The total number of items across all pages
+          minimum: 0
+          example: 45
+    ListBookResponse:
+      type: object
+      properties:
+        metadata:
+          $ref: "#/components/schemas/Pagination"
+        items:
+          type: array
+          description: A list of book
+          items:
+            $ref: "#/components/schemas/BookResponse"
