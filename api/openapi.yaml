@@ -286,7 +286,7 @@ paths:
       tags:
         - Books
       security:
-        - BearerAuth: []
+        - BearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -329,6 +329,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidationError"
+    get:
+      summary: Retrieve all books that belongs to the user
+      tags:
+        - Books
+      security:
+        - BearerAuth: [ ]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            description: The page number to retrieve from
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            description: The maximum number of items to retrieve per page
+      responses:
+        200:
+          description: Successfully retrieved all books that belongs to the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListBookResponse"
+        401:
+          description: Unauthorized (e.g No token provided or token is invalid/expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized: Access token missing or invalid"
 
 components:
   securitySchemes:
@@ -542,3 +576,41 @@ components:
           type: string
           format: date-time
           description: The timestamp when the book was updated
+    Pagination:
+      type: object
+      required:
+        - current_page
+        - total_pages
+        - total_items
+        - page_size
+      properties:
+        current_page:
+          type: integer
+          minimum: 1
+          description: The current page number
+          example: 1
+        total_pages:
+          type: integer
+          description: The total number of pages
+          minimum: 1
+          example: 10
+        page_size:
+          type: integer
+          description: The number of items per page
+          minimum: 1
+          example: 10
+        total_items:
+          type: integer
+          description: The total number of items across all pages
+          minimum: 0
+          example: 45
+    ListBookResponse:
+      type: object
+      properties:
+        metadata:
+          $ref: "#/components/schemas/Pagination"
+        items:
+          type: array
+          description: A list of book
+          items:
+            $ref: "#/components/schemas/BookResponse"
