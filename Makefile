@@ -45,3 +45,8 @@ compose-rm:
 sqlc-generate:
 	@echo "Generating sql queries"
 	@sqlc generate
+
+.PHONY: oapi-generate
+oapi-generate:
+	@echo "generating server from OpenAPI specification"
+	@oapi-codegen --config oapi-codegen.yaml ./api/openapi.yaml

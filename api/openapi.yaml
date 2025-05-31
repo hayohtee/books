@@ -17,6 +17,7 @@ paths:
   /auth/registration:
     post:
       summary: Register a new user
+      operationId: registerUserHandler
       tags:
         - Auth
       requestBody:
@@ -67,6 +68,7 @@ paths:
   /auth/verify-email:
     post:
       summary: Verify user email address
+      operationId: verifyEmailHandler
       tags:
         - Auth
       requestBody:
@@ -117,6 +119,7 @@ paths:
   /auth/resend-code:
     post:
       summary: Resend email verification code
+      operationId: resendCodeHandler
       tags:
         - Auth
       requestBody:
@@ -164,6 +167,7 @@ paths:
   /auth/login:
     post:
       summary: Log in a user
+      operationId: loginUserHandler
       tags:
         - Auth
       requestBody:
@@ -209,6 +213,7 @@ paths:
   /token/refresh:
     post:
       summary: Refresh access token
+      operationId: refreshTokenHandler
       tags:
         - Auth
       requestBody:
@@ -243,6 +248,7 @@ paths:
   /users/{id}:
     get:
       summary: Get user profile by ID
+      operationId: getUserHandler
       tags:
         - UserManagement
       parameters:
@@ -282,6 +288,7 @@ paths:
   /books:
     post:
       summary: Create a new book
+      operationId: createBookHandler
       tags:
         - Books
       security:
@@ -330,11 +337,17 @@ paths:
                 $ref: "#/components/schemas/ValidationError"
     get:
       summary: Retrieve all books that belongs to the user
+      operationId: listBookHandler
       tags:
         - Books
       security:
         - BearerAuth: [ ]
       parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+            description: The name of the book to search for
         - name: page
           in: query
           schema:
@@ -365,6 +378,7 @@ paths:
   /books/{id}:
     get:
       summary: Get a specific book that belongs to the user by ID
+      operationId: getBookHandler
       tags:
         - Books
       security:
@@ -411,6 +425,7 @@ paths:
                 message: "Forbidden: you have no permission to access this resource"
     put:
       summary: Update a specific book that belongs to the user by ID
+      operationId: updateBookHandler
       tags:
         - Books
       security:
@@ -482,6 +497,7 @@ paths:
                   field: "name"
     delete:
       summary: Delete a specific book that belongs to the user by ID
+      operationId: deleteBookHandler
       tags:
         - Books
       security:
