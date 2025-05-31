@@ -180,69 +180,69 @@ type VerifyEmailRequest struct {
 	VerificationCode string `json:"verification_code"`
 }
 
-// GetBooksParams defines parameters for GetBooks.
-type GetBooksParams struct {
+// ListBookHandlerParams defines parameters for ListBookHandler.
+type ListBookHandlerParams struct {
 	Name     *string `form:"name,omitempty" json:"name,omitempty"`
 	Page     *int    `form:"page,omitempty" json:"page,omitempty"`
 	PageSize *int    `form:"page_size,omitempty" json:"page_size,omitempty"`
 }
 
-// PostAuthLoginJSONRequestBody defines body for PostAuthLogin for application/json ContentType.
-type PostAuthLoginJSONRequestBody = LoginRequest
+// LoginUserHandlerJSONRequestBody defines body for LoginUserHandler for application/json ContentType.
+type LoginUserHandlerJSONRequestBody = LoginRequest
 
-// PostAuthRegistrationJSONRequestBody defines body for PostAuthRegistration for application/json ContentType.
-type PostAuthRegistrationJSONRequestBody = RegistrationRequest
+// RegisterUserHandlerJSONRequestBody defines body for RegisterUserHandler for application/json ContentType.
+type RegisterUserHandlerJSONRequestBody = RegistrationRequest
 
-// PostAuthResendCodeJSONRequestBody defines body for PostAuthResendCode for application/json ContentType.
-type PostAuthResendCodeJSONRequestBody = ResendCodeRequest
+// ResendCodeHandlerJSONRequestBody defines body for ResendCodeHandler for application/json ContentType.
+type ResendCodeHandlerJSONRequestBody = ResendCodeRequest
 
-// PostAuthVerifyEmailJSONRequestBody defines body for PostAuthVerifyEmail for application/json ContentType.
-type PostAuthVerifyEmailJSONRequestBody = VerifyEmailRequest
+// VerifyEmailHandlerJSONRequestBody defines body for VerifyEmailHandler for application/json ContentType.
+type VerifyEmailHandlerJSONRequestBody = VerifyEmailRequest
 
-// PostBooksJSONRequestBody defines body for PostBooks for application/json ContentType.
-type PostBooksJSONRequestBody = CreateBookRequest
+// CreateBookHandlerJSONRequestBody defines body for CreateBookHandler for application/json ContentType.
+type CreateBookHandlerJSONRequestBody = CreateBookRequest
 
-// PutBooksIdJSONRequestBody defines body for PutBooksId for application/json ContentType.
-type PutBooksIdJSONRequestBody = UpdateBookRequest
+// UpdateBookHandlerJSONRequestBody defines body for UpdateBookHandler for application/json ContentType.
+type UpdateBookHandlerJSONRequestBody = UpdateBookRequest
 
-// PostTokenRefreshJSONRequestBody defines body for PostTokenRefresh for application/json ContentType.
-type PostTokenRefreshJSONRequestBody = TokenRefreshRequest
+// RefreshTokenHandlerJSONRequestBody defines body for RefreshTokenHandler for application/json ContentType.
+type RefreshTokenHandlerJSONRequestBody = TokenRefreshRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Log in a user
 	// (POST /auth/login)
-	PostAuthLogin(w http.ResponseWriter, r *http.Request)
+	LoginUserHandler(w http.ResponseWriter, r *http.Request)
 	// Register a new user
 	// (POST /auth/registration)
-	PostAuthRegistration(w http.ResponseWriter, r *http.Request)
+	RegisterUserHandler(w http.ResponseWriter, r *http.Request)
 	// Resend email verification code
 	// (POST /auth/resend-code)
-	PostAuthResendCode(w http.ResponseWriter, r *http.Request)
+	ResendCodeHandler(w http.ResponseWriter, r *http.Request)
 	// Verify user email address
 	// (POST /auth/verify-email)
-	PostAuthVerifyEmail(w http.ResponseWriter, r *http.Request)
+	VerifyEmailHandler(w http.ResponseWriter, r *http.Request)
 	// Retrieve all books that belongs to the user
 	// (GET /books)
-	GetBooks(w http.ResponseWriter, r *http.Request, params GetBooksParams)
+	ListBookHandler(w http.ResponseWriter, r *http.Request, params ListBookHandlerParams)
 	// Create a new book
 	// (POST /books)
-	PostBooks(w http.ResponseWriter, r *http.Request)
+	CreateBookHandler(w http.ResponseWriter, r *http.Request)
 	// Delete a specific book that belongs to the user by ID
 	// (DELETE /books/{id})
-	DeleteBooksId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	DeleteBookHandler(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// Get a specific book that belongs to the user by ID
 	// (GET /books/{id})
-	GetBooksId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	GetBookHandler(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// Update a specific book that belongs to the user by ID
 	// (PUT /books/{id})
-	PutBooksId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	UpdateBookHandler(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// Refresh access token
 	// (POST /token/refresh)
-	PostTokenRefresh(w http.ResponseWriter, r *http.Request)
+	RefreshTokenHandler(w http.ResponseWriter, r *http.Request)
 	// Get user profile by ID
 	// (GET /users/{id})
-	GetUsersId(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	GetUserHandler(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -254,12 +254,12 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// PostAuthLogin operation middleware
-func (siw *ServerInterfaceWrapper) PostAuthLogin(w http.ResponseWriter, r *http.Request) {
+// LoginUserHandler operation middleware
+func (siw *ServerInterfaceWrapper) LoginUserHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostAuthLogin(w, r)
+		siw.Handler.LoginUserHandler(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -269,12 +269,12 @@ func (siw *ServerInterfaceWrapper) PostAuthLogin(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// PostAuthRegistration operation middleware
-func (siw *ServerInterfaceWrapper) PostAuthRegistration(w http.ResponseWriter, r *http.Request) {
+// RegisterUserHandler operation middleware
+func (siw *ServerInterfaceWrapper) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostAuthRegistration(w, r)
+		siw.Handler.RegisterUserHandler(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -284,12 +284,12 @@ func (siw *ServerInterfaceWrapper) PostAuthRegistration(w http.ResponseWriter, r
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// PostAuthResendCode operation middleware
-func (siw *ServerInterfaceWrapper) PostAuthResendCode(w http.ResponseWriter, r *http.Request) {
+// ResendCodeHandler operation middleware
+func (siw *ServerInterfaceWrapper) ResendCodeHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostAuthResendCode(w, r)
+		siw.Handler.ResendCodeHandler(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -299,12 +299,12 @@ func (siw *ServerInterfaceWrapper) PostAuthResendCode(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// PostAuthVerifyEmail operation middleware
-func (siw *ServerInterfaceWrapper) PostAuthVerifyEmail(w http.ResponseWriter, r *http.Request) {
+// VerifyEmailHandler operation middleware
+func (siw *ServerInterfaceWrapper) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostAuthVerifyEmail(w, r)
+		siw.Handler.VerifyEmailHandler(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -314,8 +314,8 @@ func (siw *ServerInterfaceWrapper) PostAuthVerifyEmail(w http.ResponseWriter, r 
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// GetBooks operation middleware
-func (siw *ServerInterfaceWrapper) GetBooks(w http.ResponseWriter, r *http.Request) {
+// ListBookHandler operation middleware
+func (siw *ServerInterfaceWrapper) ListBookHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var err error
@@ -323,7 +323,7 @@ func (siw *ServerInterfaceWrapper) GetBooks(w http.ResponseWriter, r *http.Reque
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetBooksParams
+	var params ListBookHandlerParams
 
 	// ------------- Optional query parameter "name" -------------
 
@@ -350,7 +350,7 @@ func (siw *ServerInterfaceWrapper) GetBooks(w http.ResponseWriter, r *http.Reque
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetBooks(w, r, params)
+		siw.Handler.ListBookHandler(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -360,14 +360,14 @@ func (siw *ServerInterfaceWrapper) GetBooks(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// PostBooks operation middleware
-func (siw *ServerInterfaceWrapper) PostBooks(w http.ResponseWriter, r *http.Request) {
+// CreateBookHandler operation middleware
+func (siw *ServerInterfaceWrapper) CreateBookHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostBooks(w, r)
+		siw.Handler.CreateBookHandler(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -377,8 +377,8 @@ func (siw *ServerInterfaceWrapper) PostBooks(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// DeleteBooksId operation middleware
-func (siw *ServerInterfaceWrapper) DeleteBooksId(w http.ResponseWriter, r *http.Request) {
+// DeleteBookHandler operation middleware
+func (siw *ServerInterfaceWrapper) DeleteBookHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var err error
@@ -395,7 +395,7 @@ func (siw *ServerInterfaceWrapper) DeleteBooksId(w http.ResponseWriter, r *http.
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteBooksId(w, r, id)
+		siw.Handler.DeleteBookHandler(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -405,8 +405,8 @@ func (siw *ServerInterfaceWrapper) DeleteBooksId(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// GetBooksId operation middleware
-func (siw *ServerInterfaceWrapper) GetBooksId(w http.ResponseWriter, r *http.Request) {
+// GetBookHandler operation middleware
+func (siw *ServerInterfaceWrapper) GetBookHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var err error
@@ -423,7 +423,7 @@ func (siw *ServerInterfaceWrapper) GetBooksId(w http.ResponseWriter, r *http.Req
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetBooksId(w, r, id)
+		siw.Handler.GetBookHandler(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -433,8 +433,8 @@ func (siw *ServerInterfaceWrapper) GetBooksId(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// PutBooksId operation middleware
-func (siw *ServerInterfaceWrapper) PutBooksId(w http.ResponseWriter, r *http.Request) {
+// UpdateBookHandler operation middleware
+func (siw *ServerInterfaceWrapper) UpdateBookHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var err error
@@ -451,7 +451,7 @@ func (siw *ServerInterfaceWrapper) PutBooksId(w http.ResponseWriter, r *http.Req
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PutBooksId(w, r, id)
+		siw.Handler.UpdateBookHandler(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -461,12 +461,12 @@ func (siw *ServerInterfaceWrapper) PutBooksId(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// PostTokenRefresh operation middleware
-func (siw *ServerInterfaceWrapper) PostTokenRefresh(w http.ResponseWriter, r *http.Request) {
+// RefreshTokenHandler operation middleware
+func (siw *ServerInterfaceWrapper) RefreshTokenHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostTokenRefresh(w, r)
+		siw.Handler.RefreshTokenHandler(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -476,8 +476,8 @@ func (siw *ServerInterfaceWrapper) PostTokenRefresh(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// GetUsersId operation middleware
-func (siw *ServerInterfaceWrapper) GetUsersId(w http.ResponseWriter, r *http.Request) {
+// GetUserHandler operation middleware
+func (siw *ServerInterfaceWrapper) GetUserHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var err error
@@ -494,7 +494,7 @@ func (siw *ServerInterfaceWrapper) GetUsersId(w http.ResponseWriter, r *http.Req
 	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetUsersId(w, r, id)
+		siw.Handler.GetUserHandler(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -618,17 +618,17 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	m.HandleFunc("POST "+options.BaseURL+"/auth/login", wrapper.PostAuthLogin)
-	m.HandleFunc("POST "+options.BaseURL+"/auth/registration", wrapper.PostAuthRegistration)
-	m.HandleFunc("POST "+options.BaseURL+"/auth/resend-code", wrapper.PostAuthResendCode)
-	m.HandleFunc("POST "+options.BaseURL+"/auth/verify-email", wrapper.PostAuthVerifyEmail)
-	m.HandleFunc("GET "+options.BaseURL+"/books", wrapper.GetBooks)
-	m.HandleFunc("POST "+options.BaseURL+"/books", wrapper.PostBooks)
-	m.HandleFunc("DELETE "+options.BaseURL+"/books/{id}", wrapper.DeleteBooksId)
-	m.HandleFunc("GET "+options.BaseURL+"/books/{id}", wrapper.GetBooksId)
-	m.HandleFunc("PUT "+options.BaseURL+"/books/{id}", wrapper.PutBooksId)
-	m.HandleFunc("POST "+options.BaseURL+"/token/refresh", wrapper.PostTokenRefresh)
-	m.HandleFunc("GET "+options.BaseURL+"/users/{id}", wrapper.GetUsersId)
+	m.HandleFunc("POST "+options.BaseURL+"/auth/login", wrapper.LoginUserHandler)
+	m.HandleFunc("POST "+options.BaseURL+"/auth/registration", wrapper.RegisterUserHandler)
+	m.HandleFunc("POST "+options.BaseURL+"/auth/resend-code", wrapper.ResendCodeHandler)
+	m.HandleFunc("POST "+options.BaseURL+"/auth/verify-email", wrapper.VerifyEmailHandler)
+	m.HandleFunc("GET "+options.BaseURL+"/books", wrapper.ListBookHandler)
+	m.HandleFunc("POST "+options.BaseURL+"/books", wrapper.CreateBookHandler)
+	m.HandleFunc("DELETE "+options.BaseURL+"/books/{id}", wrapper.DeleteBookHandler)
+	m.HandleFunc("GET "+options.BaseURL+"/books/{id}", wrapper.GetBookHandler)
+	m.HandleFunc("PUT "+options.BaseURL+"/books/{id}", wrapper.UpdateBookHandler)
+	m.HandleFunc("POST "+options.BaseURL+"/token/refresh", wrapper.RefreshTokenHandler)
+	m.HandleFunc("GET "+options.BaseURL+"/users/{id}", wrapper.GetUserHandler)
 
 	return m
 }
@@ -636,51 +636,51 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"ziI1rS0uFv8EAAD///Ftcv20RgAA",
+	"H4sIAAAAAAAC/+xbe2/bthb/KoTugK2AYzvPtf7rdku2m2EvpO2AizY3oMVji61EqiTl1Av83S94KMl6",
+	"ULaT2GnW5r/EInkePOd3HiRvglAmqRQgjA5GN4EOI0go/vmDlB8uQKdSaLD/p0qmoAwH/BoqoAbYFTX2",
+	"PwY6VDw1XIpgFLyOgBiegDY0Scl1BIKYCMhYyg/kmmqSzw16wUSqxK4QMGpgz84JeoGZpxCMAm0UF9Ng",
+	"0Qs489PIBP+YAeEMhOETDopMpCpJBb0APtEkje1ix0M4Odg/Znvj4/Bk7+j5i5O9F8+/D/cmh8PJ4cn3",
+	"zycnw+dVfrKMMx8rgibgZ8Z+IXLiJ39x9uo1oSknDDSfCt/KWcrurNB87sYKzTSoq7tplchrAWoHul30",
+	"AgUfM66ABaO3AQ5BbS/Z7VWtrqaxy3I5OX4PobFC/ohjnRV/zECbthHvajcbsiAZH4tnSknVZisBrenU",
+	"w9lLEmUJFXsKKKPjGAjYBUgxvsrjuZjRmDPCRZoZkio54wzWq71YysftTxxi1sHyxH5br0ocRkxEDQlp",
+	"poHhr8gptVOcQDVBYqrNVW4ILUPu1JQlrFMI+YSHdS2V1uxYrpJKMm3IGG6vrV4uv09rv3JtVkMpN5Bo",
+	"32bHXBurudwAy3HfKJgEo+BfgyV2D3LgHtRILUp+qFJ07jRmKKOGrlvnTzrlAvcEpW6LJadcdDoWJJTH",
+	"/l3BT4QypkDrwi6sh9e24r2MBJPw7/yXfiiTKoS49T0GkVKtr6XqMMXia4NsuWw5e93GF/TLCb6dr6iw",
+	"HT4zpUCYq7TTevMRxI4gIkvGdQ3t94KEC55kCf6dE+fCwBSU08QUrjT/uwvgcEWrCDQrkoJCUjUaw3VE",
+	"jDQ0vuowYIxadkCLGA2V1JrQOEaaukr06LhCdNhN1E3ciGiLxjrBGrtd26w6/boKqlr3WcQFTLk2Cm3i",
+	"8fnOhKsCar3U8XsNzlukf5GRN7lZgrh3Zft59cKnEj6ju1c006sFpI1w4AI0CPajZHD/PTeSXEc8jFAe",
+	"AddkBsrGOBc9Q8mA6EhmMbNxTIMwW7AML/b5BH0tP4C4gIkCHXWKqtz3K2MH+0XOhxAcQuTYUC6AEZZZ",
+	"fggX3HAak9hGICIVSRXMuMx0MW+tBHUWVkjSFbFpGILWq0RwI3IJMNGxaYf71QqRKmkgNMCIAi0zFTos",
+	"ado3fEq5An3FO8jEfAI2ySdcEA2hFKyEhSoHVSM4PBl6UfXW++LSN5nvDxpjg2ZLHPxw5X72Avc8dRCA",
+	"BLjWGdQztB+AKvTh1Rtc25+maDU2air2WcIbLDIedRXxRoPaaqFucfJOhfpaGPsHhazbl8etpY+21HTY",
+	"TfT0FdxrA13Fmnym+FdZyXXUiViKrSx2yqrN1YrN2lBvWghVqlVvGbRpia2zJKFqXuhWzkDZvLVdqBYV",
+	"t62uyhISjUNV0r5b1JS5vF4926g/P7ObspWcYgx5ItHA27v6ZTUrubJZiZ+Pkz3Gp9x4khgFIfAZMDKe",
+	"o9oLSkvW9g9eDE+OMfcyBpRd8n/v3rGbk8U3G5dvbTbbyl70Ag1hpriZv7Km5ZTrAtHLzERtyc6EAdWK",
+	"wTZEY9sBlUe+dSuQd9lweBjiCPwTvg16rgtrmRg34l1kTBosLE9cTKRfqRhXXv55XnqSU6s1RBuDMM/g",
+	"xoVT+385wSlEu5X2+8P+0G6lTEHQlAej4LA/7B86hUeohAHNTDTAPAzNTzoztEaINM9ZMHKNAhui/kMF",
+	"i1EY5Uz2B8nmGKGkMDZTtYlVmsY5w4P32hXOzqHXuXutH7Gob7hRGeAPLkYi7wfD4dZo17NFJF7fFiu+",
+	"zVenwDBTy9AuJlkcIxgdbZGXHPHaPHQ0BJH8/u7JvxHWWKTif+dEDw62RrQZdTzkf6I8hmo0sTwcP4ze",
+	"LTrRmGhQM1B54EBYcZHF+Yi1C1pEbkOn2uIU4sulHetcrRZIOj3OdRlA7d7pfP2MjXxvewZXS367XE/l",
+	"GgFW971eEAFl4BKSX2VYKraNqm8uzosUQMB1PC9y42LLltwuQ9TAftODW6eBinsi2OIxAMWLBwAKLD64",
+	"iYiJuC5SldjmY3MCn7g2+gk/GvhReDyhWIavRRENgu0VaVkXiBRNq11DSLM5toPg3Xm8tvTVlx3dtIhq",
+	"MgYQ2EyzqfJcZops1inrPkxrb/Nf7T5eBakI7pl5FMnC0QbkS71WtF3xbOfUnuKCCGnIRGYCaW0NScpq",
+	"zBGuEdkM1LwCndXKqAKjykLq/hKc1cBvuXDD+a0H5aK1DHgFDuDY+V5ZJ/qBoFJq7hYJPDXt54GCs4om",
+	"GxlDn/zXuj8NQ5kJQ7gmQl4TGho+g74XD9Y6vqNWc/aCdJ+89BF6cBTId5t8B/0pSWhsMxXIweHZPxYU",
+	"bCr3pQHD58+LnJFgALPazDs8+lkDtJyzu05zrRvlxyvXuBjdBFPwtRjyKxZLfEqpogkYzOzf3gTcsvox",
+	"AzUvLhWNirtFS02sb9/b8K+BqjAiE+k9hfCTys+NV5GqnPJbKgqM4jADMlHYcVt9WN1N1R1Fryad0E92",
+	"7dYhfZWNyu2Alaxc7rDL0rpI4zHHV/WcyXHP8KIBmpC7ejSGWIopSli2yzfug/hRrNLdGFnUXrb9Eu5O",
+	"/KQi3OHpNlCsQs953O8yp1dCmlTlOVpBeeAOu9izWlsTXaTa0Hx7aTeymmHkZrCBHpfui83F4HLR60gs",
+	"lvfzdptXtO8BPnCLYp3R2u9lO2Hr/Yn83NHbn8C9HBw/cH/C60GNXGNUyTPsPDK2JnF/x/GmNL+VpH55",
+	"9cfvSOrZVwcIj6GlchtQcm6ddzxyI29CT5k6DG44WzjHicFAG4xO8ff1SURKTbQMsXhmWgeS1bH2wW+s",
+	"3zsib1AvIX45xbbwa3sNkm4qX6GnDg/vKu5PUo05YyBGZC4zEtGZTdRtgofSSmGjeXFuGXFd3k/agugl",
+	"7VLuDrJQUr1lpuLcmNDlLQKXt3dkK2Q8J+en3pzFW2j8DOYJIraf+2hv1v7k11+2X9+rbYR2g22c81Oy",
+	"iR9stYmE1CsL3gaifgazDXxKMw8+LS8rfokQtf3SsH2584FvjmwEj/k7tzteG3mqtp6w/gnrt4f1m9bJ",
+	"FVGWl17zZ5JF83kpY+vpYfWO6orj2MdSjTskvX9gsxU7us2geMyx4oYCDsDLd7vtIPretTy2K4a/N55f",
+	"kO+oYETiZ+ry6srjjWfF44oth5HaSwuCyJNraFfBJIf3unRbDScXtVcvSzS3CJ8D+k5CSotuvXlf6c67",
+	"cc3HN+1TNHcdrWiFdVW49WuDjfSxMxk8P62+PqgeHt3lScTts9TPWeRudAcxVXLCY6icSn31TawtXBo4",
+	"PyVHD50RIPV7VH9Z1RyagdAu/hsVdAqJ1crlwi2vZn4PPIUZxDK1Y/MLgkEvyFScvxUYDQb7B9/3h/1h",
+	"f390NBwOB7P9wHKUk7vpvi3rQKGXP7O0wSS3pyVzpW+irItec7U/CmixcSDGGsbI8hFCPtdF/k0nV3VX",
+	"WaShtcXl4v8BAAD//31tX0XZRgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
