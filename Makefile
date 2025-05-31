@@ -50,8 +50,3 @@ sqlc-generate:
 oapi-generate:
 	@echo "generating server from OpenAPI specification"
 	@oapi-codegen --config oapi-codegen.yaml ./api/openapi.yaml
-
-.PHONY: sqlc-generate
-sqlc-generate:
-	@echo "Generating sql queries"
-	@sqlc generate
