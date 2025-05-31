@@ -335,6 +335,11 @@ paths:
       security:
         - BearerAuth: [ ]
       parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+            description: The name of the book to search for
         - name: page
           in: query
           schema:
