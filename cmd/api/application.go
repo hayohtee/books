@@ -4,6 +4,7 @@ import (
 	"github.com/hayohtee/books/internal/data"
 	"github.com/hayohtee/books/internal/mailer"
 	"log/slog"
+	"sync"
 )
 
 type application struct {
@@ -11,6 +12,7 @@ type application struct {
 	logger  *slog.Logger
 	queries *data.Queries
 	mailer  *mailer.Mailer
+	wg      *sync.WaitGroup
 }
 
 // config struct holds the configuration settings for the application.
