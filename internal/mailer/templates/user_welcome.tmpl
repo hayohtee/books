@@ -1,0 +1,95 @@
+{{define "subject"}}Welcome to Books{{end}}
+
+{{define "plainBody"}}
+    Hi,
+
+    Thank you for signing up! To verify your account, please use the following verification code:
+
+    {{.Code}}
+
+
+    If you did not sign up for this account, you can safely ignore this email.
+
+    Best regards,
+    Olamilekan
+
+    ---
+    © {{.Year}} Books. All rights reserved.
+{{end}}
+
+{{define "htmlBody"}}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Email Verification Code</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f9f9f9;
+                margin: 0;
+                padding: 0;
+            }
+
+            .container {
+                max-width: 600px;
+                margin: 20px auto;
+                background-color: #ffffff;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+            }
+
+            .header {
+                background-color: #007BFF;
+                color: white;
+                padding: 20px;
+                text-align: center;
+            }
+
+            .content {
+                padding: 20px;
+                line-height: 1.6;
+                color: #333;
+            }
+
+            .code {
+                font-size: 24px;
+                font-weight: bold;
+                color: #007BFF;
+                text-align: center;
+                margin: 20px 0;
+            }
+
+            .footer {
+                text-align: center;
+                font-size: 12px;
+                color: #888;
+                margin: 20px 0;
+            }
+
+            .footer a {
+                color: #007BFF;
+                text-decoration: none;
+            }
+        </style>
+    </head>
+    <body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to Books!</h1>
+        </div>
+        <div class="content">
+            <p>Thank you for signing up! To verify your account, please use the following verification code:</p>
+            <div class="code">{{.Code}}</div>
+            <p>Enter this code in the verification screen of the mobile app to complete the process.</p>
+            <p>If you did not sign up for this account, you can safely ignore this email.</p>
+        </div>
+        <div class="footer">
+            <p>© {{.Year}} Books. All rights reserved.</p>
+        </div>
+    </div>
+    </body>
+    </html>
+{{end}}
