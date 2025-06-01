@@ -1,5 +1,16 @@
 package main
 
+import (
+	"github.com/hayohtee/books/internal/data"
+	"log/slog"
+)
+
+type application struct {
+	cfg     config
+	logger  *slog.Logger
+	queries *data.Queries
+}
+
 // config struct holds the configuration settings for the application.
 type config struct {
 	// the port to listen on
