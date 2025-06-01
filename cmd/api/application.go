@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/hayohtee/books/internal/data"
+	"github.com/hayohtee/books/internal/mailer"
 	"log/slog"
 )
 
@@ -9,6 +10,7 @@ type application struct {
 	cfg     config
 	logger  *slog.Logger
 	queries *data.Queries
+	mailer  *mailer.Mailer
 }
 
 // config struct holds the configuration settings for the application.
