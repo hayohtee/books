@@ -12,8 +12,21 @@ services:
       - books_db_data:/var/lib/postgresql/data
     networks:
       - books-net
+  redis:
+    container_name: redis
+    image: redis:7.4.4-alpine
+    ports:
+      - "6379:6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PORT: 6379
+    volumes:
+      - redis-data:/data
+    networks:
+      - books-net
 
 volumes:
   books_db_data:
+  redis-data:
 networks:
   books-net:
