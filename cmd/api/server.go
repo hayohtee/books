@@ -11,7 +11,7 @@ func (app *application) serve() error {
 	mux := http.NewServeMux()
 	srv := http.Server{
 		Addr:         fmt.Sprintf(":%d", app.cfg.port),
-		Handler:      HandlerFromMux(app, mux),
+		Handler:      HandlerFromMuxWithBaseURL(app, mux, "/v1"),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
