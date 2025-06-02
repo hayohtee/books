@@ -5,6 +5,7 @@ import (
 	"github.com/hayohtee/books/internal/mailer"
 	"log/slog"
 	"sync"
+	"time"
 )
 
 type application struct {
@@ -24,7 +25,7 @@ type config struct {
 		dsn          string
 		maxOpenConns int
 		maxIdleConns int
-		maxIdleTime  string
+		maxIdleTime  time.Duration
 	}
 	// the configurations settings for smtp.
 	smtp struct {
