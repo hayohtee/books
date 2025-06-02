@@ -61,7 +61,7 @@ func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Reque
 		}
 
 		if err = app.mailer.Send(string(payload.Email), "user_welcome.tmpl", templateData); err != nil {
-			app.logger.Error(fmt.Sprintf("error sending welcome email to %s: %v", payload.Email, err))
+			app.logger.Error(err.Error())
 		}
 	})
 
