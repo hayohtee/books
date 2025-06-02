@@ -13,7 +13,7 @@ type application struct {
 	logger  *slog.Logger
 	queries *data.Queries
 	mailer  *mailer.Mailer
-	wg      *sync.WaitGroup
+	wg      sync.WaitGroup
 }
 
 // config struct holds the configuration settings for the application.
