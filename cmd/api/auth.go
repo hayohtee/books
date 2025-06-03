@@ -8,6 +8,7 @@ import (
 	"github.com/hayohtee/books/internal/data"
 	"github.com/hayohtee/books/internal/validator"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -58,14 +59,14 @@ func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	app.background(func() {
-		otp, err := app.cache.NewOTP(row.ID.String(), string(payload.Email), cache.EmailOTPScope, otpDuration)
+		otp, err := app.cache.NewEmailVerificationCode(string(payload.Email), otpDuration)
 		if err != nil {
 			app.logger.Error(fmt.Sprintf("error generating OTP for %s: %v", payload.Email, err))
 			return
 		}
 
 		templateData := map[string]string{
-			"Code": otp.Code,
+			"Code": otp,
 			"Year": time.Now().Format(time.RFC1123),
 		}
 
@@ -188,14 +189,14 @@ func (app *application) ResendCodeHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	app.background(func() {
-		otp, err := app.cache.NewOTP(user.ID.String(), string(payload.Email), cache.EmailOTPScope, otpDuration)
+		otp, err := app.cache.NewEmailVerificationCode(string(payload.Email), otpDuration)
 		if err != nil {
 			app.logger.Error(fmt.Sprintf("error generating OTP for %s: %v", payload.Email, err))
 			return
 		}
 
 		templateData := map[string]string{
-			"Code": otp.Code,
+			"Code": otp,
 			"Year": time.Now().Format(time.RFC1123),
 		}
 
@@ -220,6 +221,53 @@ func (app *application) ResendCodeHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
+	var payload VerifyEmailRequest
+	if err := app.readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	v := validator.New()
+	validateEmail(string(payload.Email), v)
+	validateCode(payload.VerificationCode, v)
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	otp, err := app.cache.GetEmailVerificationCode(string(payload.Email))
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	if payload.VerificationCode != otp {
+		app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "Invalid verification code."})
+		return
+	}
+
+	user, err := app.queries.FindUserByEmail(r.Context(), string(payload.Email))
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "No account with this email exists."})
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	if err = app.queries.VerifyUserEmail(r.Context(), user.ID); err != nil {
+		app.serverError(w, r, err)
+	}
+
+	resp := map[string]string{
+		"message": "Email verified successfully.",
+	}
+
+	if err = app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
+		app.serverError(w, r, err)
+	}
 
 }
 
@@ -252,4 +300,12 @@ func validatePassword(password string, v *validator.Validator) {
 func validateLoginRequest(l LoginRequest, v *validator.Validator) {
 	validateEmail(string(l.Email), v)
 	validatePassword(l.Password, v)
+}
+
+func validateCode(code string, v *validator.Validator) {
+	v.Check(code != "", "code", "must be provided")
+	v.Check(len(code) == 6, "code", "must contain 6 characters")
+
+	_, err := strconv.Atoi(code)
+	v.Check(err == nil, "code", "must be a valid number")
 }
