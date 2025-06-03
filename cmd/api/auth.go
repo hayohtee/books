@@ -15,6 +15,7 @@ import (
 const (
 	accessTokenDuration  = 2 * time.Hour
 	refreshTokenDuration = 24 * time.Hour * 7
+	otpDuration          = 5 * time.Minute
 )
 
 func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -57,22 +58,22 @@ func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	app.background(func() {
-		otp, err := generateOTP()
+		otp, err := app.cache.NewOTP(row.ID.String(), string(payload.Email), cache.EmailOTPScope, otpDuration)
 		if err != nil {
 			app.logger.Error(fmt.Sprintf("error generating OTP for %s: %v", payload.Email, err))
 			return
 		}
 
 		templateData := map[string]string{
-			"Code": otp,
-			"Year": time.Now().String(),
+			"Code": otp.Code,
+			"Year": time.Now().Format(time.RFC1123),
 		}
 
 		for range 5 {
 			if err = app.mailer.Send(string(payload.Email), "user_welcome.tmpl", templateData); err != nil {
 				app.logger.Error(err.Error())
 			} else {
-				app.logger.Info("Successfully sent Welcome email to %s", string(payload.Email))
+				app.logger.Info(fmt.Sprintf("Successfully sent welcome email to %s", string(payload.Email)))
 				break
 			}
 			time.Sleep(5 * time.Second)
@@ -170,23 +171,39 @@ func (app *application) ResendCodeHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	user, err := app.queries.FindUserByEmail(r.Context(), string(payload.Email))
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "No account with this email exists."})
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	if user.EmailVerified {
+		app.errorResponse(w, r, http.StatusConflict, Error{Message: "Email is already verified."})
+		return
+	}
+
 	app.background(func() {
-		otp, err := generateOTP()
+		otp, err := app.cache.NewOTP(user.ID.String(), string(payload.Email), cache.EmailOTPScope, otpDuration)
 		if err != nil {
 			app.logger.Error(fmt.Sprintf("error generating OTP for %s: %v", payload.Email, err))
 			return
 		}
 
 		templateData := map[string]string{
-			"Code": otp,
-			"Year": time.Now().String(),
+			"Code": otp.Code,
+			"Year": time.Now().Format(time.RFC1123),
 		}
 
 		for range 5 {
 			if err = app.mailer.Send(string(payload.Email), "user_welcome.tmpl", templateData); err != nil {
 				app.logger.Error(err.Error())
 			} else {
-				app.logger.Info("Successfully sent Welcome email to %s", string(payload.Email))
+				app.logger.Info(fmt.Sprintf("Successfully sent welcome email to %s", string(payload.Email)))
 				break
 			}
 			time.Sleep(5 * time.Second)
