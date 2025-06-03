@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/hayohtee/books/internal/cache"
 	"github.com/hayohtee/books/internal/data"
 	"github.com/hayohtee/books/internal/mailer"
 	"log/slog"
@@ -14,6 +15,7 @@ type application struct {
 	queries *data.Queries
 	mailer  *mailer.Mailer
 	wg      sync.WaitGroup
+	cache   *cache.Cache
 }
 
 // config struct holds the configuration settings for the application.
