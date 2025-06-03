@@ -15,10 +15,10 @@ const (
 )
 
 type Token struct {
-	UserID    uuid.UUID `redis:"user_id"`
+	UserID    string    `redis:"user_id"`
 	ExpiresAt time.Time `redis:"expires_at"`
 	Scope     string    `redis:"scope"`
-	PlainText string    `redis:"-"`
+	PlainText string    `redis:"token"`
 }
 
 func generateOpaqueToken() (string, error) {
@@ -38,7 +38,7 @@ func (c *Cache) NewToken(userID uuid.UUID, ttl time.Duration, scope string) (Tok
 	}
 
 	token := Token{
-		UserID:    userID,
+		UserID:    userID.String(),
 		ExpiresAt: time.Now().Add(ttl),
 		Scope:     scope,
 		PlainText: opaqueToken,
@@ -68,13 +68,13 @@ func (c *Cache) InsertToken(token Token) error {
 	return nil
 }
 
-func (c *Cache) GetToken(scope, tokenPlainText string) (Token, error) {
+func (c *Cache) GetToken(scope, plainText string) (Token, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var token Token
 
-	value := c.client.HGetAll(ctx, fmt.Sprintf("%s:%s", scope, tokenPlainText))
+	value := c.client.HGetAll(ctx, fmt.Sprintf("%s:%s", scope, plainText))
 	if err := value.Err(); err != nil {
 		return Token{}, err
 	}
@@ -99,9 +99,5 @@ func (c *Cache) DeleteToken(scope, plainText string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := c.client.HDel(ctx, fmt.Sprintf("%s:%s", scope, plainText)).Err()
-	if err != nil {
-		return err
-	}
-	return nil
+	return c.client.HDel(ctx, fmt.Sprintf("%s:%s", scope, plainText)).Err()
 }
