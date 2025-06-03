@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"github.com/hayohtee/books/internal/cache"
 	"github.com/hayohtee/books/internal/data"
 	"github.com/hayohtee/books/internal/mailer"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -75,6 +76,7 @@ func main() {
 		logger:  logger,
 		queries: data.New(db),
 		mailer:  mailClient,
+		cache:   cache.New(redisClient),
 	}
 
 	if err := app.serve(); err != nil {
