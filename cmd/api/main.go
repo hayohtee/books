@@ -38,16 +38,16 @@ func main() {
 	flag.Parse()
 
 	// Read the configurations for smtp from environment variables
-	cfg.smtp.host = os.Getenv("GMAIL_SMTP_HOST")
-	cfg.smtp.sender = os.Getenv("GMAIL_SMTP_SENDER")
-	cfg.smtp.password = os.Getenv("GMAIL_SMTP_PASSWORD")
-	cfg.smtp.username = os.Getenv("GMAIL_SMTP_USERNAME")
-	port, err := strconv.Atoi(os.Getenv("GMAIL_SMTP_PORT"))
+	cfg.smtp.host = os.Getenv("SMTP_HOST")
+	cfg.smtp.sender = os.Getenv("SMTP_SENDER")
+	cfg.smtp.password = os.Getenv("SMTP_PASSWORD")
+	cfg.smtp.username = os.Getenv("SMTP_USERNAME")
+	port, err := strconv.Atoi(os.Getenv("SMTP_PORT"))
 	if err != nil {
 		panic(err)
 	}
 	cfg.smtp.port = port
-	mailClient, err := mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender)
+	mailClient, err := mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.sender, cfg.smtp.username, cfg.smtp.password)
 	if err != nil {
 		logger.Error(fmt.Sprintf("error creating mail client: %v", err))
 		os.Exit(1)
