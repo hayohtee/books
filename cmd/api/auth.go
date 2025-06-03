@@ -1,12 +1,20 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/hayohtee/books/internal/cache"
 	"github.com/hayohtee/books/internal/data"
 	"github.com/hayohtee/books/internal/validator"
 	"net/http"
 	"strings"
 	"time"
+)
+
+const (
+	accessTokenDuration  = 2 * time.Hour
+	refreshTokenDuration = 24 * time.Hour * 7
 )
 
 func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -60,8 +68,14 @@ func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Reque
 			"Year": time.Now().String(),
 		}
 
-		if err = app.mailer.Send(string(payload.Email), "user_welcome.tmpl", templateData); err != nil {
-			app.logger.Error(err.Error())
+		for range 5 {
+			if err = app.mailer.Send(string(payload.Email), "user_welcome.tmpl", templateData); err != nil {
+				app.logger.Error(err.Error())
+			} else {
+				app.logger.Info("Successfully sent Welcome email to %s", string(payload.Email))
+				break
+			}
+			time.Sleep(5 * time.Second)
 		}
 	})
 
@@ -83,11 +97,109 @@ func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Reque
 }
 
 func (app *application) LoginUserHandler(w http.ResponseWriter, r *http.Request) {
+	var payload LoginRequest
+	if err := app.readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
 
+	v := validator.New()
+	validateLoginRequest(payload, v)
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	user, err := app.queries.FindUserByEmail(r.Context(), string(payload.Email))
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "No account with this email exists."})
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	matches, err := passwordMatches(payload.Password, user.PasswordHash)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	if !matches {
+		app.invalidCredentialsResponse(w, r)
+		return
+	}
+
+	accessToken, err := app.cache.NewToken(user.ID, accessTokenDuration, cache.AccessTokenScope)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	refreshToken, err := app.cache.NewToken(user.ID, refreshTokenDuration, cache.RefreshTokenScope)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	resp := TokenResponse{
+		AccessToken:  accessToken.PlainText,
+		RefreshToken: refreshToken.PlainText,
+		ExpiresIn:    int(accessToken.ExpiresAt.Unix()),
+		TokenType:    "bearer",
+	}
+
+	if err = app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
+		app.serverError(w, r, err)
+	}
 }
 
 func (app *application) ResendCodeHandler(w http.ResponseWriter, r *http.Request) {
+	var payload ResendCodeRequest
+	if err := app.readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
 
+	v := validator.New()
+	validateEmail(string(payload.Email), v)
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	app.background(func() {
+		otp, err := generateOTP()
+		if err != nil {
+			app.logger.Error(fmt.Sprintf("error generating OTP for %s: %v", payload.Email, err))
+			return
+		}
+
+		templateData := map[string]string{
+			"Code": otp,
+			"Year": time.Now().String(),
+		}
+
+		for range 5 {
+			if err = app.mailer.Send(string(payload.Email), "user_welcome.tmpl", templateData); err != nil {
+				app.logger.Error(err.Error())
+			} else {
+				app.logger.Info("Successfully sent Welcome email to %s", string(payload.Email))
+				break
+			}
+			time.Sleep(5 * time.Second)
+		}
+	})
+
+	resp := map[string]string{
+		"message": "Email has been sent successfully.",
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
+		app.serverError(w, r, err)
+	}
 }
 
 func (app *application) VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
@@ -105,10 +217,22 @@ func validateRegistrationRequest(r RegistrationRequest, v *validator.Validator) 
 	v.Check(r.LastName != "", "last_name", "must be provided")
 	v.Check(len(r.LastName) <= 500, "last_name", "must not be more than 500 bytes long")
 
-	v.Check(r.Email != "", "email", "must be provided")
-	v.Check(validator.Matches(string(r.Email), validator.EmailRX), "email", "must be a valid email address")
+	validateEmail(string(r.Email), v)
+	validatePassword(r.Password, v)
+}
 
-	v.Check(r.Password != "", "password", "must be provided")
-	v.Check(len(r.Password) >= 8, "password", "must be at least 8 bytes")
-	v.Check(len(r.Password) <= 72, "password", "must not be more than 72 bytes long")
+func validateEmail(email string, v *validator.Validator) {
+	v.Check(email != "", "email", "must be provided")
+	v.Check(validator.Matches(email, validator.EmailRX), "email", "must be a valid email address")
+}
+
+func validatePassword(password string, v *validator.Validator) {
+	v.Check(password != "", "password", "must be provided")
+	v.Check(len(password) >= 8, "password", "must be at least 8 bytes")
+	v.Check(len(password) <= 72, "password", "must not be more than 72 bytes long")
+}
+
+func validateLoginRequest(l LoginRequest, v *validator.Validator) {
+	validateEmail(string(l.Email), v)
+	validatePassword(l.Password, v)
 }
