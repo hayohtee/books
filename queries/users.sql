@@ -4,7 +4,7 @@ VALUES ($1, $2, $3, $4)
 RETURNING id, email_verified, created_at;
 
 -- name: FindUserByEmail :one
-SELECT id, email, password_hash
+SELECT *
 FROM users
 WHERE email = $1;
 

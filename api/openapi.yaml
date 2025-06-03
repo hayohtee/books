@@ -580,6 +580,7 @@ components:
         - last_name
         - email
         - created_at
+        - email_verified
       properties:
         id:
           type: string
@@ -599,6 +600,10 @@ components:
           format: email
           description: The email of the user
           example: johndoe@example.com
+        email_verified:
+          type: boolean
+          description: Returns true if user email is verified or false if otherwise
+          example: true
         created_at:
           type: string
           format: date-time
