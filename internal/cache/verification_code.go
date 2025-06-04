@@ -9,34 +9,34 @@ import (
 	"time"
 )
 
-type VerificationCode struct {
+type VerificationData struct {
 	UserID   string    `redis:"user_id"`
 	Code     string    `redis:"code"`
 	Email    string    `redis:"email"`
 	ExpireAt time.Time `redis:"expire_at"`
 }
 
-func (c *Cache) NewVerificationCode(userID uuid.UUID, email string, ttl time.Duration) (VerificationCode, error) {
+func (c *Cache) NewVerificationData(userID uuid.UUID, email string, ttl time.Duration) (VerificationData, error) {
 	otpCode, err := generateCode()
 	if err != nil {
-		return VerificationCode{}, err
+		return VerificationData{}, err
 	}
 
-	v := VerificationCode{
+	v := VerificationData{
 		UserID:   userID.String(),
 		Code:     otpCode,
 		Email:    email,
 		ExpireAt: time.Now().Add(ttl),
 	}
 
-	if err = c.InsertVerificationCode(v); err != nil {
-		return VerificationCode{}, err
+	if err = c.InsertVerificationData(v); err != nil {
+		return VerificationData{}, err
 	}
 
 	return v, nil
 }
 
-func (c *Cache) InsertVerificationCode(v VerificationCode) error {
+func (c *Cache) InsertVerificationData(v VerificationData) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -48,30 +48,38 @@ func (c *Cache) InsertVerificationCode(v VerificationCode) error {
 	return c.client.ExpireAt(ctx, fmt.Sprintf("%s:verification_code", v.Email), v.ExpireAt).Err()
 }
 
-func (c *Cache) GetVerificationCode(email string) (VerificationCode, error) {
+func (c *Cache) GetVerificationData(email string) (VerificationData, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	value := c.client.Get(ctx, fmt.Sprintf("%s:verification_code", email))
+	var verificationCode VerificationData
+
+	value := c.client.HGetAll(ctx, fmt.Sprintf("%s:verification_code", email))
 	if err := value.Err(); err != nil {
-		return VerificationCode{}, err
+		return VerificationData{}, err
 	}
 
 	res, err := value.Result()
 	if err != nil {
-		return VerificationCode{}, err
+		return VerificationData{}, err
 	}
 
 	if len(res) == 0 {
-		return VerificationCode{}, ErrRecordNotFound
+		return VerificationData{}, ErrRecordNotFound
 	}
 
-	var verificationCode VerificationCode
 	if err = value.Scan(&verificationCode); err != nil {
-		return VerificationCode{}, err
+		return VerificationData{}, err
 	}
 
 	return verificationCode, nil
+}
+
+func (c *Cache) DeleteVerificationData(email string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return c.client.Del(ctx, fmt.Sprintf("%s:verification_code", email)).Err()
 }
 
 // generateCode generates a 6-digits verification code.
