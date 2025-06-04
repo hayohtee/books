@@ -4,46 +4,74 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/google/uuid"
 	"math/big"
 	"time"
 )
 
-func (c *Cache) NewEmailVerificationCode(email string, ttl time.Duration) (string, error) {
-	otpCode, err := generateCode()
-	if err != nil {
-		return "", err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	err = c.client.Set(ctx, fmt.Sprintf("%s:email_otp", email), otpCode, ttl).Err()
-	if err != nil {
-		return "", err
-	}
-
-	return otpCode, nil
+type VerificationCode struct {
+	UserID   string    `redis:"user_id"`
+	Code     string    `redis:"code"`
+	Email    string    `redis:"email"`
+	ExpireAt time.Time `redis:"expire_at"`
 }
 
-func (c *Cache) GetEmailVerificationCode(email string) (string, error) {
+func (c *Cache) NewVerificationCode(userID uuid.UUID, email string, ttl time.Duration) (VerificationCode, error) {
+	otpCode, err := generateCode()
+	if err != nil {
+		return VerificationCode{}, err
+	}
+
+	v := VerificationCode{
+		UserID:   userID.String(),
+		Code:     otpCode,
+		Email:    email,
+		ExpireAt: time.Now().Add(ttl),
+	}
+
+	if err = c.InsertVerificationCode(v); err != nil {
+		return VerificationCode{}, err
+	}
+
+	return v, nil
+}
+
+func (c *Cache) InsertVerificationCode(v VerificationCode) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	value := c.client.Get(ctx, fmt.Sprintf("%s:email_otp", email))
+	err := c.client.HSet(ctx, fmt.Sprintf("%s:verification_code", v.Email), v).Err()
+	if err != nil {
+		return err
+	}
+
+	return c.client.ExpireAt(ctx, fmt.Sprintf("%s:verification_code", v.Email), v.ExpireAt).Err()
+}
+
+func (c *Cache) GetVerificationCode(email string) (VerificationCode, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	value := c.client.Get(ctx, fmt.Sprintf("%s:verification_code", email))
 	if err := value.Err(); err != nil {
-		return "", err
+		return VerificationCode{}, err
 	}
 
 	res, err := value.Result()
 	if err != nil {
-		return "", err
+		return VerificationCode{}, err
 	}
 
 	if len(res) == 0 {
-		return "", ErrRecordNotFound
+		return VerificationCode{}, ErrRecordNotFound
 	}
 
-	return res, nil
+	var verificationCode VerificationCode
+	if err = value.Scan(&verificationCode); err != nil {
+		return VerificationCode{}, err
+	}
+
+	return verificationCode, nil
 }
 
 // generateCode generates a 6-digits verification code.
