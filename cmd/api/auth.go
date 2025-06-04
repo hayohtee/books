@@ -280,7 +280,64 @@ func (app *application) VerifyEmailHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) RefreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var payload TokenRefreshRequest
+	if err := app.readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
 
+	v := validator.New()
+	v.Check(payload.RefreshToken != "", "refresh_token", "must be provided")
+	v.Check(len(payload.RefreshToken) == 26, "refresh_token", "must be 26 bytes long")
+
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	refreshToken, err := app.cache.GetToken(cache.RefreshTokenScope, payload.RefreshToken)
+	if err != nil {
+		switch {
+		case errors.Is(err, cache.ErrRecordNotFound):
+			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "Invalid refresh token."})
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	userID, err := uuid.Parse(refreshToken.UserID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	accessToken, err := app.cache.NewToken(userID, accessTokenDuration, cache.AccessTokenScope)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	// Check if the refresh token expiry is less than 3 days and generate a new one
+	duration := refreshToken.ExpiresAt.Sub(time.Now().UTC())
+	if duration > 0 && duration < 72*time.Hour {
+		refreshToken, err = app.cache.NewToken(userID, refreshTokenDuration, cache.RefreshTokenScope)
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+	}
+
+	resp := TokenResponse{
+		AccessToken:  accessToken.PlainText,
+		RefreshToken: refreshToken.PlainText,
+		ExpiresIn:    int(accessToken.ExpiresAt.Unix()),
+		TokenType:    "bearer",
+	}
+
+	if err = app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
+		app.serverError(w, r, err)
+	}
 }
 
 func validateRegistrationRequest(r RegistrationRequest, v *validator.Validator) {
