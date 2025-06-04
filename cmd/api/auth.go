@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/hayohtee/books/internal/cache"
 	"github.com/hayohtee/books/internal/data"
 	"github.com/hayohtee/books/internal/validator"
@@ -14,9 +15,9 @@ import (
 )
 
 const (
-	accessTokenDuration  = 2 * time.Hour
-	refreshTokenDuration = 24 * time.Hour * 7
-	otpDuration          = 5 * time.Minute
+	accessTokenDuration      = 2 * time.Hour
+	refreshTokenDuration     = 24 * time.Hour * 7
+	verificationCodeDuration = 5 * time.Minute
 )
 
 func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -59,15 +60,15 @@ func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	app.background(func() {
-		otp, err := app.cache.NewEmailVerificationCode(string(payload.Email), otpDuration)
+		verificationData, err := app.cache.NewVerificationData(row.ID, string(payload.Email), verificationCodeDuration)
 		if err != nil {
 			app.logger.Error(fmt.Sprintf("error generating OTP for %s: %v", payload.Email, err))
 			return
 		}
 
-		templateData := map[string]string{
-			"Code": otp,
-			"Year": time.Now().Format(time.RFC1123),
+		templateData := map[string]any{
+			"Code": verificationData.Code,
+			"Year": time.Now().Year(),
 		}
 
 		for range 5 {
@@ -189,19 +190,20 @@ func (app *application) ResendCodeHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	app.background(func() {
-		otp, err := app.cache.NewEmailVerificationCode(string(payload.Email), otpDuration)
+		verificationData, err := app.cache.NewVerificationData(user.ID, user.Email, verificationCodeDuration)
 		if err != nil {
 			app.logger.Error(fmt.Sprintf("error generating OTP for %s: %v", payload.Email, err))
 			return
 		}
 
-		templateData := map[string]string{
-			"Code": otp,
-			"Year": time.Now().Format(time.RFC1123),
+		templateData := map[string]any{
+			"Code": verificationData.Code,
+			"Year": time.Now().Year(),
 		}
 
 		for range 5 {
-			if err = app.mailer.Send(string(payload.Email), "user_welcome.tmpl", templateData); err != nil {
+			err = app.mailer.Send(string(payload.Email), "user_welcome.tmpl", templateData)
+			if err != nil {
 				app.logger.Error(err.Error())
 			} else {
 				app.logger.Info(fmt.Sprintf("Successfully sent welcome email to %s", string(payload.Email)))
@@ -235,31 +237,38 @@ func (app *application) VerifyEmailHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	otp, err := app.cache.GetEmailVerificationCode(string(payload.Email))
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-
-	if payload.VerificationCode != otp {
-		app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "Invalid verification code."})
-		return
-	}
-
-	user, err := app.queries.FindUserByEmail(r.Context(), string(payload.Email))
+	verificationData, err := app.cache.GetVerificationData(string(payload.Email))
 	if err != nil {
 		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "No account with this email exists."})
+		case errors.Is(err, cache.ErrRecordNotFound):
+			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "Invalid verification code."})
 		default:
 			app.serverError(w, r, err)
 		}
 		return
 	}
 
-	if err = app.queries.VerifyUserEmail(r.Context(), user.ID); err != nil {
-		app.serverError(w, r, err)
+	if payload.VerificationCode != verificationData.Code {
+		app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "Invalid verification code."})
+		return
 	}
+
+	userID, err := uuid.Parse(verificationData.UserID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	if err = app.queries.VerifyUserEmail(r.Context(), userID); err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	app.background(func() {
+		if err := app.cache.DeleteVerificationData(string(payload.Email)); err != nil {
+			app.logger.Error(fmt.Sprintf("error deleting verification code for %s: %v", string(payload.Email), err))
+		}
+	})
 
 	resp := map[string]string{
 		"message": "Email verified successfully.",
@@ -268,7 +277,6 @@ func (app *application) VerifyEmailHandler(w http.ResponseWriter, r *http.Reques
 	if err = app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
 		app.serverError(w, r, err)
 	}
-
 }
 
 func (app *application) RefreshTokenHandler(w http.ResponseWriter, r *http.Request) {
