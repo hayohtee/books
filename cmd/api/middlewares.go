@@ -1,8 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"github.com/hayohtee/books/internal/cache"
 	"net/http"
+	"strings"
 )
 
 func (app *application) recoverPanic(next http.Handler) http.Handler {
@@ -26,6 +29,36 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 			}
 		}()
 
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) requireAuthentication(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := r.Context().Value(BearerAuthScopes).([]string); ok {
+			authHeader := r.Header.Get("Authorization")
+			// Check for the Authorization header.
+			if authHeader == "" {
+				app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "missing Authorization header"})
+				return
+			}
+			if !strings.HasPrefix(authHeader, "Bearer ") {
+				app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "invalid bearer token"})
+				return
+			}
+			bearerToken := strings.TrimPrefix(authHeader, "Bearer ")
+			tokenData, err := app.cache.GetToken(cache.AccessTokenScope, bearerToken)
+			if err != nil {
+				switch {
+				case errors.Is(err, cache.ErrRecordNotFound):
+					app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "invalid or expired bearer token"})
+				default:
+					app.serverError(w, r, err)
+				}
+				return
+			}
+			r = app.contextWithUserID(r, tokenData.UserID)
+		}
 		next.ServeHTTP(w, r)
 	})
 }
