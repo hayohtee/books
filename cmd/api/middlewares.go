@@ -39,11 +39,11 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 			authHeader := r.Header.Get("Authorization")
 			// Check for the Authorization header.
 			if authHeader == "" {
-				app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "missing Authorization header"})
+				app.missingAuthorizationHeaderResponse(w, r)
 				return
 			}
 			if !strings.HasPrefix(authHeader, "Bearer ") {
-				app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "invalid bearer token"})
+				app.invalidAuthenticationTokenResponse(w, r)
 				return
 			}
 			bearerToken := strings.TrimPrefix(authHeader, "Bearer ")
