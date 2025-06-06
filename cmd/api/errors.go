@@ -87,3 +87,8 @@ func (app *application) invalidRefreshTokenResponse(w http.ResponseWriter, r *ht
 	errResp := Error{Message: "the refresh token provided is invalid or expired"}
 	app.errorResponse(w, r, http.StatusUnauthorized, errResp)
 }
+
+func (app *application) notPermittedResponse(w http.ResponseWriter, r *http.Request) {
+	errResp := Error{Message: "your user account does not have the necessary permissions to access this resource"}
+	app.errorResponse(w, r, http.StatusForbidden, errResp)
+}
