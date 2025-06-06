@@ -117,7 +117,7 @@ func (app *application) LoginUserHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
-			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "No account with this email exists."})
+			app.emailAddressNotFoundResponse(w, r)
 		default:
 			app.serverError(w, r, err)
 		}
@@ -177,7 +177,7 @@ func (app *application) ResendCodeHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
-			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "No account with this email exists."})
+			app.emailAddressNotFoundResponse(w, r)
 		default:
 			app.serverError(w, r, err)
 		}
@@ -299,7 +299,7 @@ func (app *application) RefreshTokenHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		switch {
 		case errors.Is(err, cache.ErrRecordNotFound):
-			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "Invalid refresh token."})
+			app.invalidRefreshTokenResponse(w, r)
 		default:
 			app.serverError(w, r, err)
 		}
