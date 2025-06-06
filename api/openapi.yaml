@@ -770,24 +770,26 @@ components:
       type: object
       required:
         - current_page
-        - total_pages
+        - first_page
+        - last_page
         - total_items
         - page_size
       properties:
         current_page:
           type: integer
-          minimum: 1
           description: The current page number
           example: 1
-        total_pages:
+        first_page:
           type: integer
-          description: The total number of pages
-          minimum: 1
-          example: 10
+          description: The first page
+          example: 1
+        last_page:
+          type: integer
+          description: The last page
+          example: 12
         page_size:
           type: integer
           description: The number of items per page
-          minimum: 1
           example: 10
         total_items:
           type: integer
@@ -796,6 +798,9 @@ components:
           example: 45
     ListBookResponse:
       type: object
+      required:
+        - metadata
+        - items
       properties:
         metadata:
           $ref: "#/components/schemas/Pagination"
