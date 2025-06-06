@@ -134,7 +134,40 @@ func (app *application) CreateBookHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) DeleteBookHandler(w http.ResponseWriter, r *http.Request, id openapitypes.UUID) {
+	userID, err := app.contextGetUserID(r)
+	if err != nil || userID == uuid.Nil {
+		app.authenticationRequiredResponse(w, r)
+		return
+	}
 
+	book, err := app.queries.GetBook(r.Context(), id)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	if userID.String() != book.UserID.String() {
+		app.notPermittedResponse(w, r)
+		return
+	}
+
+	if err = app.queries.DeleteBook(r.Context(), data.DeleteBookParams{ID: id, UserID: userID}); err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	resp := map[string]string{
+		"message": "Book deleted successfully",
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
+		app.serverError(w, r, err)
+	}
 }
 
 func (app *application) GetBookHandler(w http.ResponseWriter, r *http.Request, id openapitypes.UUID) {
