@@ -48,5 +48,10 @@ sqlc-generate:
 
 .PHONY: oapi-generate
 oapi-generate:
-	@echo "generating server from OpenAPI specification"
+	@echo "Generating server from OpenAPI specification"
 	@oapi-codegen --config oapi-codegen.yaml ./api/openapi.yaml
+
+.PHONY: api-run
+api-run:
+	@echo "Running api server"
+	@go run ./cmd/api

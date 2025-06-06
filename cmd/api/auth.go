@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/hayohtee/books/internal/cache"
 	"github.com/hayohtee/books/internal/data"
 	"github.com/hayohtee/books/internal/validator"
@@ -14,9 +15,9 @@ import (
 )
 
 const (
-	accessTokenDuration  = 2 * time.Hour
-	refreshTokenDuration = 24 * time.Hour * 7
-	otpDuration          = 5 * time.Minute
+	accessTokenDuration      = 2 * time.Hour
+	refreshTokenDuration     = 24 * time.Hour * 7
+	verificationCodeDuration = 5 * time.Minute
 )
 
 func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -59,15 +60,15 @@ func (app *application) RegisterUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	app.background(func() {
-		otp, err := app.cache.NewEmailVerificationCode(string(payload.Email), otpDuration)
+		verificationData, err := app.cache.NewVerificationData(row.ID, string(payload.Email), verificationCodeDuration)
 		if err != nil {
 			app.logger.Error(fmt.Sprintf("error generating OTP for %s: %v", payload.Email, err))
 			return
 		}
 
-		templateData := map[string]string{
-			"Code": otp,
-			"Year": time.Now().Format(time.RFC1123),
+		templateData := map[string]any{
+			"Code": verificationData.Code,
+			"Year": time.Now().Year(),
 		}
 
 		for range 5 {
@@ -116,7 +117,7 @@ func (app *application) LoginUserHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
-			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "No account with this email exists."})
+			app.emailAddressNotFoundResponse(w, r)
 		default:
 			app.serverError(w, r, err)
 		}
@@ -176,7 +177,7 @@ func (app *application) ResendCodeHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
-			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "No account with this email exists."})
+			app.emailAddressNotFoundResponse(w, r)
 		default:
 			app.serverError(w, r, err)
 		}
@@ -189,19 +190,20 @@ func (app *application) ResendCodeHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	app.background(func() {
-		otp, err := app.cache.NewEmailVerificationCode(string(payload.Email), otpDuration)
+		verificationData, err := app.cache.NewVerificationData(user.ID, user.Email, verificationCodeDuration)
 		if err != nil {
 			app.logger.Error(fmt.Sprintf("error generating OTP for %s: %v", payload.Email, err))
 			return
 		}
 
-		templateData := map[string]string{
-			"Code": otp,
-			"Year": time.Now().Format(time.RFC1123),
+		templateData := map[string]any{
+			"Code": verificationData.Code,
+			"Year": time.Now().Year(),
 		}
 
 		for range 5 {
-			if err = app.mailer.Send(string(payload.Email), "user_welcome.tmpl", templateData); err != nil {
+			err = app.mailer.Send(string(payload.Email), "user_welcome.tmpl", templateData)
+			if err != nil {
 				app.logger.Error(err.Error())
 			} else {
 				app.logger.Info(fmt.Sprintf("Successfully sent welcome email to %s", string(payload.Email)))
@@ -235,31 +237,38 @@ func (app *application) VerifyEmailHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	otp, err := app.cache.GetEmailVerificationCode(string(payload.Email))
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
-
-	if payload.VerificationCode != otp {
-		app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "Invalid verification code."})
-		return
-	}
-
-	user, err := app.queries.FindUserByEmail(r.Context(), string(payload.Email))
+	verificationData, err := app.cache.GetVerificationData(string(payload.Email))
 	if err != nil {
 		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "No account with this email exists."})
+		case errors.Is(err, cache.ErrRecordNotFound):
+			app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "Invalid verification code."})
 		default:
 			app.serverError(w, r, err)
 		}
 		return
 	}
 
-	if err = app.queries.VerifyUserEmail(r.Context(), user.ID); err != nil {
-		app.serverError(w, r, err)
+	if payload.VerificationCode != verificationData.Code {
+		app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "Invalid verification code."})
+		return
 	}
+
+	userID, err := uuid.Parse(verificationData.UserID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	if err = app.queries.VerifyUserEmail(r.Context(), userID); err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	app.background(func() {
+		if err := app.cache.DeleteVerificationData(string(payload.Email)); err != nil {
+			app.logger.Error(fmt.Sprintf("error deleting verification code for %s: %v", string(payload.Email), err))
+		}
+	})
 
 	resp := map[string]string{
 		"message": "Email verified successfully.",
@@ -268,11 +277,67 @@ func (app *application) VerifyEmailHandler(w http.ResponseWriter, r *http.Reques
 	if err = app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
 		app.serverError(w, r, err)
 	}
-
 }
 
 func (app *application) RefreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var payload TokenRefreshRequest
+	if err := app.readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
 
+	v := validator.New()
+	v.Check(payload.RefreshToken != "", "refresh_token", "must be provided")
+	v.Check(len(payload.RefreshToken) == 26, "refresh_token", "must be 26 bytes long")
+
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	refreshToken, err := app.cache.GetToken(cache.RefreshTokenScope, payload.RefreshToken)
+	if err != nil {
+		switch {
+		case errors.Is(err, cache.ErrRecordNotFound):
+			app.invalidRefreshTokenResponse(w, r)
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	userID, err := uuid.Parse(refreshToken.UserID)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	accessToken, err := app.cache.NewToken(userID, accessTokenDuration, cache.AccessTokenScope)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	// Check if the refresh token expiry is less than 3 days and generate a new one
+	duration := refreshToken.ExpiresAt.Sub(time.Now().UTC())
+	if duration > 0 && duration < 72*time.Hour {
+		refreshToken, err = app.cache.NewToken(userID, refreshTokenDuration, cache.RefreshTokenScope)
+		if err != nil {
+			app.serverError(w, r, err)
+			return
+		}
+	}
+
+	resp := TokenResponse{
+		AccessToken:  accessToken.PlainText,
+		RefreshToken: refreshToken.PlainText,
+		ExpiresIn:    int(accessToken.ExpiresAt.Unix()),
+		TokenType:    "bearer",
+	}
+
+	if err = app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
+		app.serverError(w, r, err)
+	}
 }
 
 func validateRegistrationRequest(r RegistrationRequest, v *validator.Validator) {
@@ -303,9 +368,9 @@ func validateLoginRequest(l LoginRequest, v *validator.Validator) {
 }
 
 func validateCode(code string, v *validator.Validator) {
-	v.Check(code != "", "code", "must be provided")
-	v.Check(len(code) == 6, "code", "must contain 6 characters")
+	v.Check(code != "", "verification_code", "must be provided")
+	v.Check(len(code) == 6, "verification_code", "must contain 6 characters")
 
 	_, err := strconv.Atoi(code)
-	v.Check(err == nil, "code", "must be a valid number")
+	v.Check(err == nil, "verification_code", "must be a valid number")
 }

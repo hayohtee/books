@@ -4,46 +4,82 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/google/uuid"
 	"math/big"
 	"time"
 )
 
-func (c *Cache) NewEmailVerificationCode(email string, ttl time.Duration) (string, error) {
-	otpCode, err := generateCode()
-	if err != nil {
-		return "", err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	err = c.client.Set(ctx, fmt.Sprintf("%s:email_otp", email), otpCode, ttl).Err()
-	if err != nil {
-		return "", err
-	}
-
-	return otpCode, nil
+type VerificationData struct {
+	UserID   string    `redis:"user_id"`
+	Code     string    `redis:"code"`
+	Email    string    `redis:"email"`
+	ExpireAt time.Time `redis:"expire_at"`
 }
 
-func (c *Cache) GetEmailVerificationCode(email string) (string, error) {
+func (c *Cache) NewVerificationData(userID uuid.UUID, email string, ttl time.Duration) (VerificationData, error) {
+	otpCode, err := generateCode()
+	if err != nil {
+		return VerificationData{}, err
+	}
+
+	v := VerificationData{
+		UserID:   userID.String(),
+		Code:     otpCode,
+		Email:    email,
+		ExpireAt: time.Now().Add(ttl),
+	}
+
+	if err = c.InsertVerificationData(v); err != nil {
+		return VerificationData{}, err
+	}
+
+	return v, nil
+}
+
+func (c *Cache) InsertVerificationData(v VerificationData) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	value := c.client.Get(ctx, fmt.Sprintf("%s:email_otp", email))
+	err := c.client.HSet(ctx, fmt.Sprintf("%s:verification_code", v.Email), v).Err()
+	if err != nil {
+		return err
+	}
+
+	return c.client.ExpireAt(ctx, fmt.Sprintf("%s:verification_code", v.Email), v.ExpireAt).Err()
+}
+
+func (c *Cache) GetVerificationData(email string) (VerificationData, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var verificationCode VerificationData
+
+	value := c.client.HGetAll(ctx, fmt.Sprintf("%s:verification_code", email))
 	if err := value.Err(); err != nil {
-		return "", err
+		return VerificationData{}, err
 	}
 
 	res, err := value.Result()
 	if err != nil {
-		return "", err
+		return VerificationData{}, err
 	}
 
 	if len(res) == 0 {
-		return "", ErrRecordNotFound
+		return VerificationData{}, ErrRecordNotFound
 	}
 
-	return res, nil
+	if err = value.Scan(&verificationCode); err != nil {
+		return VerificationData{}, err
+	}
+
+	return verificationCode, nil
+}
+
+func (c *Cache) DeleteVerificationData(email string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return c.client.Del(ctx, fmt.Sprintf("%s:verification_code", email)).Err()
 }
 
 // generateCode generates a 6-digits verification code.

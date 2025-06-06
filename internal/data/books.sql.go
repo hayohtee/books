@@ -74,7 +74,7 @@ func (q *Queries) GetBook(ctx context.Context, id uuid.UUID) (Book, error) {
 }
 
 const listBookForUser = `-- name: ListBookForUser :many
-SELECT count(*) OVER() AS total_records,
+SELECT count(*) OVER () AS total_records,
        id,
        user_id,
        name,
@@ -138,22 +138,39 @@ func (q *Queries) ListBookForUser(ctx context.Context, arg ListBookForUserParams
 	return items, nil
 }
 
-const updateBook = `-- name: UpdateBook :exec
+const updateBook = `-- name: UpdateBook :one
 UPDATE books
 SET name       = $1,
     updated_at = now(),
     version    = version + 1
 WHERE id = $2
   AND version = $3
+  AND user_id = $4
+RETURNING id, user_id, name, created_at, updated_at, version
 `
 
 type UpdateBookParams struct {
 	Name    string
 	ID      uuid.UUID
 	Version int32
+	UserID  uuid.UUID
 }
 
-func (q *Queries) UpdateBook(ctx context.Context, arg UpdateBookParams) error {
-	_, err := q.db.ExecContext(ctx, updateBook, arg.Name, arg.ID, arg.Version)
-	return err
+func (q *Queries) UpdateBook(ctx context.Context, arg UpdateBookParams) (Book, error) {
+	row := q.db.QueryRowContext(ctx, updateBook,
+		arg.Name,
+		arg.ID,
+		arg.Version,
+		arg.UserID,
+	)
+	var i Book
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Version,
+	)
+	return i, err
 }

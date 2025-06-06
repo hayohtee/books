@@ -73,6 +73,13 @@ func (app *application) emailAddressNotFoundResponse(w http.ResponseWriter, r *h
 	app.errorResponse(w, r, http.StatusNotFound, errResp)
 }
 
+func (app *application) missingAuthorizationHeaderResponse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("WWW-Authenticate", "Bearer")
+
+	errResp := Error{Message: "missing required authorization header"}
+	app.errorResponse(w, r, http.StatusUnauthorized, errResp)
+}
+
 func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("WWW-Authenticate", "Bearer")
 
@@ -85,5 +92,15 @@ func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter
 // error message to the client.
 func (app *application) invalidRefreshTokenResponse(w http.ResponseWriter, r *http.Request) {
 	errResp := Error{Message: "the refresh token provided is invalid or expired"}
+	app.errorResponse(w, r, http.StatusUnauthorized, errResp)
+}
+
+func (app *application) notPermittedResponse(w http.ResponseWriter, r *http.Request) {
+	errResp := Error{Message: "your user account does not have the necessary permissions to access this resource"}
+	app.errorResponse(w, r, http.StatusForbidden, errResp)
+}
+
+func (app *application) authenticationRequiredResponse(w http.ResponseWriter, r *http.Request) {
+	errResp := Error{Message: "you must be authenticated to access this resource"}
 	app.errorResponse(w, r, http.StatusUnauthorized, errResp)
 }
