@@ -92,3 +92,8 @@ func (app *application) notPermittedResponse(w http.ResponseWriter, r *http.Requ
 	errResp := Error{Message: "your user account does not have the necessary permissions to access this resource"}
 	app.errorResponse(w, r, http.StatusForbidden, errResp)
 }
+
+func (app *application) authenticationRequiredResponse(w http.ResponseWriter, r *http.Request) {
+	errResp := Error{Message: "you must be authenticated to access this resource"}
+	app.errorResponse(w, r, http.StatusUnauthorized, errResp)
+}
