@@ -4,7 +4,7 @@ VALUES ($1, $2)
 RETURNING id, created_at, updated_at;
 
 -- name: ListBookForUser :many
-SELECT count(*) OVER() AS total_records,
+SELECT count(*) OVER () AS total_records,
        id,
        user_id,
        name,
@@ -21,13 +21,15 @@ SELECT *
 FROM books
 WHERE id = $1;
 
--- name: UpdateBook :exec
+-- name: UpdateBook :one
 UPDATE books
 SET name       = $1,
     updated_at = now(),
     version    = version + 1
 WHERE id = $2
-  AND version = $3;
+  AND version = $3
+  AND user_id = $4
+RETURNING *;
 
 -- name: DeleteBook :exec
 DELETE
