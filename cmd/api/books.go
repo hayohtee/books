@@ -172,8 +172,8 @@ func (app *application) DeleteBookHandler(w http.ResponseWriter, r *http.Request
 
 func (app *application) GetBookHandler(w http.ResponseWriter, r *http.Request, id openapitypes.UUID) {
 	userID, err := app.contextGetUserID(r)
-	if err != nil {
-		app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "User is not authorized"})
+	if err != nil || userID == uuid.Nil {
+		app.authenticationRequiredResponse(w, r)
 		return
 	}
 
