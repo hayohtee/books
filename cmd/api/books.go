@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/hayohtee/books/internal/data"
 	"github.com/hayohtee/books/internal/validator"
 	openapitypes "github.com/oapi-codegen/runtime/types"
@@ -173,6 +174,70 @@ func (app *application) GetBookHandler(w http.ResponseWriter, r *http.Request, i
 }
 
 func (app *application) UpdateBookHandler(w http.ResponseWriter, r *http.Request, id openapitypes.UUID) {
+	userID, err := app.contextGetUserID(r)
+	if err != nil || userID == uuid.Nil {
+		app.authenticationRequiredResponse(w, r)
+		return
+	}
+
+	var payload UpdateBookRequest
+	if err := app.readJSON(w, r, &payload); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	v := validator.New()
+	v.Check(payload.Name != "", "name", "must be provided")
+	v.Check(len(payload.Name) <= 500, "name", "must not be more than 500 bytes")
+	if !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	book, err := app.queries.GetBook(r.Context(), id)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	if userID.String() != book.UserID.String() {
+		app.notPermittedResponse(w, r)
+		return
+	}
+
+	book, err = app.queries.UpdateBook(r.Context(), data.UpdateBookParams{
+		Name:    payload.Name,
+		ID:      book.ID,
+		Version: book.Version,
+		UserID:  userID,
+	})
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			app.editConflictResponse(w, r)
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	resp := BookResponse{
+		Id:        book.ID,
+		Name:      book.Name,
+		CreatedAt: book.CreatedAt,
+		UpdatedAt: book.UpdatedAt,
+		UserId:    book.UserID,
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
+		app.serverError(w, r, err)
+	}
 }
 
 func validateListBookParams(params ListBookHandlerParams, v *validator.Validator) {
