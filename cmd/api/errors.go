@@ -73,6 +73,13 @@ func (app *application) emailAddressNotFoundResponse(w http.ResponseWriter, r *h
 	app.errorResponse(w, r, http.StatusNotFound, errResp)
 }
 
+func (app *application) missingAuthorizationHeaderResponse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("WWW-Authenticate", "Bearer")
+
+	errResp := Error{Message: "missing required authorization header"}
+	app.errorResponse(w, r, http.StatusUnauthorized, errResp)
+}
+
 func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("WWW-Authenticate", "Bearer")
 
