@@ -16,7 +16,7 @@ import (
 func (app *application) ListBookHandler(w http.ResponseWriter, r *http.Request, params ListBookHandlerParams) {
 	userID, err := app.contextGetUserID(r)
 	if err != nil || userID == uuid.Nil {
-		app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "User is not authorized"})
+		app.authenticationRequiredResponse(w, r)
 		return
 	}
 
@@ -84,7 +84,7 @@ func (app *application) ListBookHandler(w http.ResponseWriter, r *http.Request, 
 func (app *application) CreateBookHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := app.contextGetUserID(r)
 	if err != nil || userID == uuid.Nil {
-		app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "User is not authorized"})
+		app.authenticationRequiredResponse(w, r)
 		return
 	}
 
