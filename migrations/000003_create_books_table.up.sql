@@ -5,5 +5,6 @@ CREATE TABLE IF NOT EXISTS books
     name       text                        NOT NULL,
     created_at timestamp(0) WITH TIME ZONE NOT NULL DEFAULT now(),
     updated_at timestamp(0) WITH TIME ZONE NOT NULL DEFAULT now(),
-    version    int                         NOT NULL DEFAULT 1
+    version    int                         NOT NULL DEFAULT 1,
+    UNIQUE (user_id, name)
 );
