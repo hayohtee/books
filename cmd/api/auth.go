@@ -368,9 +368,9 @@ func validateLoginRequest(l LoginRequest, v *validator.Validator) {
 }
 
 func validateCode(code string, v *validator.Validator) {
-	v.Check(code != "", "code", "must be provided")
-	v.Check(len(code) == 6, "code", "must contain 6 characters")
+	v.Check(code != "", "verification_code", "must be provided")
+	v.Check(len(code) == 6, "verification_code", "must contain 6 characters")
 
 	_, err := strconv.Atoi(code)
-	v.Check(err == nil, "code", "must be a valid number")
+	v.Check(err == nil, "verification_code", "must be a valid number")
 }
