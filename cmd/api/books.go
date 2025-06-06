@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/hayohtee/books/internal/data"
 	"github.com/hayohtee/books/internal/validator"
@@ -135,6 +137,39 @@ func (app *application) DeleteBookHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (app *application) GetBookHandler(w http.ResponseWriter, r *http.Request, id openapitypes.UUID) {
+	userID, err := app.contextGetUserID(r)
+	if err != nil {
+		app.errorResponse(w, r, http.StatusUnauthorized, Error{Message: "User is not authorized"})
+		return
+	}
+
+	book, err := app.queries.GetBook(r.Context(), id)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverError(w, r, err)
+		}
+		return
+	}
+
+	if userID.String() != book.UserID.String() {
+		app.notPermittedResponse(w, r)
+		return
+	}
+
+	resp := BookResponse{
+		Id:        book.ID,
+		Name:      book.Name,
+		CreatedAt: book.CreatedAt,
+		UpdatedAt: book.UpdatedAt,
+		UserId:    book.UserID,
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
+		app.serverError(w, r, err)
+	}
 }
 
 func (app *application) UpdateBookHandler(w http.ResponseWriter, r *http.Request, id openapitypes.UUID) {
