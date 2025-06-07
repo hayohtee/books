@@ -9,7 +9,6 @@ import (
 	"github.com/hayohtee/books/internal/data"
 	"github.com/hayohtee/books/internal/mailer"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"os"
@@ -18,11 +17,6 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-
-	if err := godotenv.Load(); err != nil {
-		logger.Error(fmt.Sprintf("error loading .env file: %v", err))
-		os.Exit(1)
-	}
 
 	// Read the value of the config fields from the command-line flags
 	var cfg config
