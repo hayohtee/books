@@ -47,6 +47,7 @@ func (app *application) serve() error {
 			},
 			Middlewares: []MiddlewareFunc{
 				app.recoverPanic,
+				app.cors,
 				validator,
 				app.requireAuthentication,
 			},

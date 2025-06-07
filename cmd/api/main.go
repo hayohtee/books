@@ -13,7 +13,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -32,21 +31,16 @@ func main() {
 	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conn", 25, "PostgreSQL max open connections")
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conn", 25, "PostgreSQL max idle connections")
 	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgreSQL max idle time")
-	flag.StringVar(&cfg.redis.addr, "redis-addr", "localhost:6379", "Redis server address")
-	flag.StringVar(&cfg.redis.password, "redis-password", os.Getenv("REDIS_PASSWORD"), "Redis server password")
-	flag.IntVar(&cfg.redis.db, "redis-db", 0, "Redis server database")
+
+	flag.StringVar(&cfg.redisDSN, "redis-dsn", os.Getenv("REDIS_DSN"), "Redis DSN")
+
+	flag.StringVar(&cfg.smtp.host, "smtp-host", os.Getenv("SMTP_HOST"), "SMTP host")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", os.Getenv("SMTP_SENDER"), "SMTP Sender")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", 465, "SMTP port")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", os.Getenv("SMTP_PASSWORD"), "SMTP password")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", os.Getenv("SMTP_USERNAME"), "SMTP username")
 	flag.Parse()
 
-	// Read the configurations for smtp from environment variables
-	cfg.smtp.host = os.Getenv("SMTP_HOST")
-	cfg.smtp.sender = os.Getenv("SMTP_SENDER")
-	cfg.smtp.password = os.Getenv("SMTP_PASSWORD")
-	cfg.smtp.username = os.Getenv("SMTP_USERNAME")
-	port, err := strconv.Atoi(os.Getenv("SMTP_PORT"))
-	if err != nil {
-		panic(err)
-	}
-	cfg.smtp.port = port
 	mailClient, err := mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.sender, cfg.smtp.username, cfg.smtp.password)
 	if err != nil {
 		logger.Error(fmt.Sprintf("error creating mail client: %v", err))
@@ -62,7 +56,7 @@ func main() {
 	defer db.Close()
 	logger.Info("database connection pool established")
 
-	redisClient, err := openRedis(cfg.redis.addr, cfg.redis.password, cfg.redis.db)
+	redisClient, err := openRedis(cfg.redisDSN)
 	if err != nil {
 		logger.Error(fmt.Sprintf("error creating redis client: %v", err))
 		os.Exit(1)
@@ -106,13 +100,13 @@ func openDB(cfg config) (*sql.DB, error) {
 	return db, nil
 }
 
-func openRedis(addr, password string, db int) (*redis.Client, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
-		DB:       db,
-	})
+func openRedis(dsn string) (*redis.Client, error) {
+	opt, err := redis.ParseURL(dsn)
+	if err != nil {
+		return nil, err
+	}
 
+	client := redis.NewClient(opt)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

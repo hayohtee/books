@@ -37,10 +37,6 @@ type config struct {
 		password string
 		sender   string
 	}
-	// the configuration settings for redis.
-	redis struct {
-		addr     string
-		password string
-		db       int
-	}
+	// the dsn for redis.
+	redisDSN string
 }
