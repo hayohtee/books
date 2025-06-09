@@ -4,8 +4,7 @@ info:
   description: The REST API specification for books
   version: 1.0.0
 servers:
-  - url: 'http://127.0.0.1:4000/v1'
-    description: Development server
+  - url: 'https://books-gmgr.onrender.com/v1'
 tags:
   - name: Auth
     description: User registration, login and token management
